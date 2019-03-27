@@ -6,11 +6,25 @@
 
 #include "state.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #define debug_print(fmt, ...) \
             do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
+bool finished = false;
+
 void perform_turn(void) {
+	if (!piece_move_valid()) {
+		if (skip_move_valid()) {
+			if (state.turn == White)
+				state.white_skip = false;
+			state.black_skip = false;
+			return;
+		} else {
+			finished = true;
+			return;
+		}
+	}
+
 	switch (state.turn) {
 		case White:
 			printf("White? ");
@@ -24,7 +38,6 @@ void perform_turn(void) {
 			break;
 	}
 
-	//TODO: Check for validity of move
 	// Read a-h, convert to 0-7
 	uint8_t column = (uint8_t) getchar() - 97;
 	uint8_t row = (uint8_t) getchar() - 49;
@@ -44,8 +57,6 @@ void perform_turn(void) {
 		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", column + 97, row + 1);
 		exit(EXIT_FAILURE);
 	}
-
-	state.turn = state.turn == White ? Black : White;
 }
 
 int main(void) {
@@ -55,13 +66,14 @@ int main(void) {
 	// Setup game
 	state = default_state();
 
-	print_state();
-
-	while (any_move_valid()) {
+	while (!finished) {
+		print_state(false);
 		perform_turn();
+		switch_player();
 		update_valid_moves();
-		print_state();
 	}
 
+	print_state(false);
+	printf("Game ended, no valid moves.\n");
 	return 1;
 }

@@ -13,6 +13,8 @@ typedef struct {
 	color_t turn;
 	color_t board[8][8];
 	bool valid_moves[8][8];
+	bool white_skip;
+	bool black_skip;
 } state_t;
 
 state_t state;
@@ -40,7 +42,9 @@ state_t default_state(void) {
 			{ false, false, false, false, true,  false, false, false },
 			{ false, false, false, false, false, false, false, false },
 			{ false, false, false, false, false, false, false, false },
-		}
+		},
+		.white_skip = true,
+		.black_skip = true
 	};
 	return temp;
 }
@@ -51,7 +55,7 @@ static inline color_t opposite_color(color_t c) {
 	return White;
 }
 
-void print_line(uint8_t y) {
+void print_line(uint8_t y, bool show_valid_moves) {
 	printf("%" PRIu8 " ", y + 1);
 	for (uint8_t x = 0; x < 8; x++) {
 		printf("\u2502");
@@ -63,7 +67,7 @@ void print_line(uint8_t y) {
 				printf("\u26AB");
 				break;
 			default:
-				if (state.valid_moves[x][y])
+				if (state.valid_moves[x][y] && show_valid_moves)
 					printf("\u25A1 ");
 				else
 					printf("  ");
@@ -73,13 +77,13 @@ void print_line(uint8_t y) {
 	printf("\u2502\n");
 }
 
-void print_state(void) {
+void print_state(bool show_valid_moves) {
 	// Duplicate horizontal bars because our pieces are double-width
 	printf("\n  \u250C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u2510\n");
-	print_line(0);
+	print_line(0, show_valid_moves);
 	for (uint8_t y = 1; y < 8; y++) {
 		printf("  \u251C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u2524\n");
-		print_line(y);
+		print_line(y, show_valid_moves);
 	}
 	printf("  \u2514\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2518\n");
 	printf("   a  b  c  d  e  f  g  h\n");
@@ -398,10 +402,28 @@ void update_valid_moves(void) {
 }
 
 // Checks a move is possible in any field
-bool any_move_valid(void) {
-	// Ideally I would calculate this once, and store the possible moves
-	// This would then, later, allow for reuse in validating user input
-	// TODO
-	return true;
+bool piece_move_valid(void) {
+	for (uint8_t column = 0; column <= 7; column++) {
+		for (uint8_t row = 0; row <= 7; row++) {
+			if (state.valid_moves[column][row])
+				return true;
+		}
+	}
+	return false;
 }
+
+bool skip_move_valid(void) {
+	if (state.turn == White)
+		return state.white_skip;
+	return state.black_skip;
+}
+
+bool any_move_valid(void) {
+	return skip_move_valid() || piece_move_valid();
+}
+
+void switch_player(void) {
+	state.turn = state.turn == White ? Black : White;
+}
+
 #endif
