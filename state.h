@@ -6,21 +6,26 @@ typedef enum {Human, Computer} player_t;
 // A more optimal solution would be to use 2 bits per cell, 4 cells per byte.
 typedef enum {Black, White, None} color_t;
 
-player_t white = Human;
-player_t black = Human;
-
+// Board state
 typedef struct {
 	color_t turn;
 	color_t board[8][8];
 	bool valid_moves[8][8];
-	bool white_skip;
-	bool black_skip;
 } state_t;
 
 state_t state;
 
+// Used only for AI player
+typedef struct {
+	uint8_t column;
+	uint8_t row;
+} coordinate_t;
 
-state_t default_state(void) {
+coordinate_t* possible_moves;
+uint8_t nr_possible_moves;
+
+void init_state(void) {
+	// Inefficient TODO: Replace with more efficient alternative.
 	state_t temp = {
 		.turn = Black,
 		.board = {
@@ -42,11 +47,21 @@ state_t default_state(void) {
 			{ false, false, false, false, true,  false, false, false },
 			{ false, false, false, false, false, false, false, false },
 			{ false, false, false, false, false, false, false, false },
-		},
-		.white_skip = true,
-		.black_skip = true
+		}
 	};
-	return temp;
+	state = temp;
+	nr_possible_moves = 4;
+	// If not enough, extend
+	possible_moves = malloc(20 * sizeof(coordinate_t));
+	possible_moves[0].column = 3;
+	possible_moves[0].row = 2;
+	possible_moves[1].column = 5;
+	possible_moves[1].row = 4;
+	possible_moves[2].column = 4;
+	possible_moves[2].row = 5;
+	possible_moves[3].column = 2;
+	possible_moves[3].row = 3;
+	nr_possible_moves = 4;
 }
 
 static inline color_t opposite_color(color_t c) {
@@ -394,15 +409,22 @@ bool is_valid_move(uint8_t column, uint8_t row) {
 }
 
 void update_valid_moves(void) {
+	nr_possible_moves = 0;
 	for (uint8_t column = 0; column < 8; column++) {
 		for (uint8_t row = 0; row < 8; row++) {
-			state.valid_moves[column][row] = is_valid_move(column, row);
+			bool valid = is_valid_move(column, row);
+			state.valid_moves[column][row] = valid;
+			if (valid) {
+				possible_moves[nr_possible_moves].column = column;
+				possible_moves[nr_possible_moves].row = row;
+				nr_possible_moves++;
+			}
 		}
 	}
 }
 
 // Checks a move is possible in any field
-bool piece_move_valid(void) {
+bool any_move_valid(void) {
 	for (uint8_t column = 0; column <= 7; column++) {
 		for (uint8_t row = 0; row <= 7; row++) {
 			if (state.valid_moves[column][row])
@@ -410,16 +432,6 @@ bool piece_move_valid(void) {
 		}
 	}
 	return false;
-}
-
-bool skip_move_valid(void) {
-	if (state.turn == White)
-		return state.white_skip;
-	return state.black_skip;
-}
-
-bool any_move_valid(void) {
-	return skip_move_valid() || piece_move_valid();
 }
 
 void switch_player(void) {
