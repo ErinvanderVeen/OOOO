@@ -101,5 +101,6 @@ int main(void) {
 
 	print_state(false);
 	printf("Game ended, no valid moves.\n");
+
 	return 1;
 }
