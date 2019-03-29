@@ -3,34 +3,50 @@
 
 #include "debug.h"
 
-// Board state
-typedef struct {
-	// Two bitboards to represent the state of the board
-	uint64_t player_pieces;
-	uint64_t opponent_pieces;
-	// Bit mask with valid moves
-	uint64_t valid_moves;
-} state_t;
+/**
+ * Bitboard of all pieces considered to belong to the current player.
+ * Note, there is no explicit distinction between white/black, as there
+ * is no need for the engine to distinguish between if it is black or white.
+ * All such information should be in the wrapper.
+ */
+uint64_t player_pieces;
 
-state_t state;
+/**
+ * Bitboard of all pieces considered to belong to the opposing player
+ */
+uint64_t opponent_pieces;
 
-// Used only for AI player
+/**
+ * Bitboard with valid moves
+ */
+uint64_t valid_moves;
+
+/**
+ * Used by the AI to send its desired move to the wrapper. Also used internally
+ * to keep track of candidate moves.
+ */
 typedef struct {
 	uint8_t column;
 	uint8_t row;
 } coordinate_t;
 
+/**
+ * List of moves that are valid in the current boardposition
+ */
 coordinate_t* possible_moves;
+/**
+ * Number of moves that are valid in the current boardposition
+ */
 uint8_t nr_possible_moves;
 
+/**
+ * Initializes the default state of Othello
+ */
 void init_state(void) {
-	// Inefficient TODO: Replace with more efficient alternative.
-	state_t temp = {
-		.player_pieces = 0b0000000000000000000000000000100000010000000000000000000000000000,
-		.opponent_pieces = 0b0000000000000000000000000001000000001000000000000000000000000000,
-		.valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000,
-	};
-	state = temp;
+	player_pieces = 0b0000000000000000000000000000100000010000000000000000000000000000;
+	opponent_pieces = 0b0000000000000000000000000001000000001000000000000000000000000000;
+	valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
+
 	nr_possible_moves = 4;
 	// If not enough, extend
 	possible_moves = malloc(20 * sizeof(coordinate_t));
@@ -45,84 +61,145 @@ void init_state(void) {
 	nr_possible_moves = 4;
 }
 
-// Switches the player and opponent pieces
+/**
+ * Swiches the current player with its opponent
+ */
 void switch_players(void) {
-	uint64_t temp = state.player_pieces;
-	state.player_pieces = state.opponent_pieces;
-	state.opponent_pieces = temp;
+	uint64_t temp = player_pieces;
+	player_pieces = opponent_pieces;
+	opponent_pieces = temp;
 }
 
-// Using bitmasks to determine if the location in the board is occupied by a
-// piece of the current player
+/**
+ * Checks if the current player has a piece in the specified location
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 bool player_piece(uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = state.player_pieces >> ((7 - row) * 8);
+	uint8_t column_val = player_pieces >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
 }
 
-// Using bitmasks to determine if the location in the board is occupied by a
-// piece of the opposite player
+/**
+ * Checks if the opposing player has a piece in the specified location
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 bool opponent_piece(uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = state.opponent_pieces >> ((7 - row) * 8);
+	uint8_t column_val = opponent_pieces >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
 }
 
+/**
+ * Checks if the either player has a piece in the specified location
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 bool any_piece(uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	// bitwise or increases efficiency of calling player_piece and opponent
 	// piece seperately
-	uint64_t board = state.player_pieces | state.opponent_pieces;
+	uint64_t board = player_pieces | opponent_pieces;
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
 	uint8_t column_val = board >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
 }
 
-// Places a piece at the specified location
+/**
+ * Places a piece of the current player on the specified location.
+ * Note: Does not remove an opposing piece if it is already there.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 void place_player_piece(uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	state.player_pieces |= mask;
+	player_pieces |= mask;
 }
 
-// Places a piece at the specified location
-void remove_opponent_piece(uint8_t column, uint8_t row) {
+/**
+ * Places a piece of the opposing player on the specified location.
+ * Note: Does not remove an opposing piece if it is already there.
+ * See switch_to_player_piece(uint8_t column, uint8_t row) if this is desired.
+ * TODO: create switch_to_player
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
+void place_opponent_piece(uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	mask ^= UINT64_MAX;
-	state.opponent_pieces &= mask;
+	opponent_pieces |= mask;
 }
 
-// Remove a piece at the specified location
+/**
+ * Removes the piece of the current player on the specified location.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 void remove_player_piece(uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
 	mask ^= UINT64_MAX;
-	state.player_pieces &= mask;
+	player_pieces &= mask;
 }
 
-// Remove a piece at the specified location
-void place_opponent_piece(uint8_t column, uint8_t row) {
+/**
+ * Removes the piece of the opposing player on the specified location.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
+void remove_opponent_piece(uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	state.opponent_pieces |= mask;
+	mask ^= UINT64_MAX;
+	opponent_pieces &= mask;
 }
 
+/**
+ * Looks in the valid_move bitboard if the specified location would be a valid
+ * move for the current player.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 bool valid_move(uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = state.valid_moves >> ((7 - row) * 8);
+	uint8_t column_val = valid_moves >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
 }
 
+/**
+ * Sets a value of the valid_move bitboard.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ * @param[in] Wether the move would be valid/invalid.
+ */
 void set_valid_move(uint8_t column, uint8_t row, bool valid) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
 	if (valid) {
-		state.valid_moves |= mask;
+		valid_moves |= mask;
 	} else {
 		mask ^= UINT64_MAX;
-		state.valid_moves &= mask;
+		valid_moves &= mask;
 	}
 }
 
+
+/**
+ * Print a graphical representation of a row in the field.
+ *
+ * @param[in] The row
+ * @param[in] Wether or not valid moves should be highlighted
+ */
 void print_line(uint8_t y, bool show_valid_moves) {
 	printf("%" PRIu8 " ", y + 1);
 	for (uint8_t x = 0; x < 8; x++) {
@@ -140,6 +217,11 @@ void print_line(uint8_t y, bool show_valid_moves) {
 	printf("\u2502\n");
 }
 
+/**
+ * Print a graphical representation of the entire field
+ *
+ * @param[in] Wether or not valid moves should be highlighted
+ */
 void print_state(bool show_valid_moves) {
 	// Duplicate horizontal bars because our pieces are double-width
 	printf("\n  \u250C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u2510\n");
@@ -290,6 +372,13 @@ void flip_neighbours(uint8_t column, uint8_t row) {
 		flip_right_down(column, row);
 }
 
+/**
+ * Place a piece on the field. First performs check to see if the field is not
+ * already occupied.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 void place_piece(uint8_t column, uint8_t row) {
 	if (any_piece(column, row)) {
 		printf("ERROR: Tried to place piece on occupied field\n");
@@ -455,6 +544,13 @@ bool valid_right_down(uint8_t column, uint8_t row) {
 	return false;
 }
 
+/**
+ * Check if the move is a valid move. NOTE: Does not perform a lookup in the
+ * table, but calculates the value itself. Should be used to update the table.
+ *
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
 bool is_valid_move(uint8_t column, uint8_t row) {
 	if (any_piece(column, row))
 		return false;
@@ -471,6 +567,10 @@ bool is_valid_move(uint8_t column, uint8_t row) {
 	);
 }
 
+/**
+ * Updates the valid_move bitboard. By checking for every square if it would
+ * be a valid move.
+ */
 void update_valid_moves(void) {
 	nr_possible_moves = 0;
 	for (uint8_t column = 0; column < 8; column++) {
@@ -486,7 +586,9 @@ void update_valid_moves(void) {
 	}
 }
 
-// Checks a move is possible in any field
+/**
+ * Checks if the current player can perform ANY move.
+ */
 bool any_move_valid(void) {
 	for (uint8_t column = 0; column <= 7; column++) {
 		for (uint8_t row = 0; row <= 7; row++) {
