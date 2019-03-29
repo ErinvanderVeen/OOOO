@@ -1,16 +1,15 @@
 #ifndef STATE_H
 #define STATE_H
 
-typedef enum {Human, Computer} player_t;
-
-// A more optimal solution would be to use 2 bits per cell, 4 cells per byte.
-typedef enum {Black, White, None} color_t;
+#include "debug.h"
 
 // Board state
 typedef struct {
-	color_t turn;
-	color_t board[8][8];
-	bool valid_moves[8][8];
+	// Two bitboards to represent the state of the board
+	uint64_t player_pieces;
+	uint64_t opponent_pieces;
+	// Bit mask with valid moves
+	uint64_t valid_moves;
 } state_t;
 
 state_t state;
@@ -27,27 +26,9 @@ uint8_t nr_possible_moves;
 void init_state(void) {
 	// Inefficient TODO: Replace with more efficient alternative.
 	state_t temp = {
-		.turn = Black,
-		.board = {
-			{ None, None, None, None,  None,  None, None, None },
-			{ None, None, None, None,  None,  None, None, None },
-			{ None, None, None, None,  None,  None, None, None },
-			{ None, None, None, White, Black, None, None, None },
-			{ None, None, None, Black, White, None, None, None },
-			{ None, None, None, None,  None,  None, None, None },
-			{ None, None, None, None,  None,  None, None, None },
-			{ None, None, None, None,  None,  None, None, None },
-		},
-		.valid_moves = {
-			{ false, false, false, false, false, false, false, false },
-			{ false, false, false, false, false, false, false, false },
-			{ false, false, false, true,  false, false, false, false },
-			{ false, false, true,  false, false, false, false, false },
-			{ false, false, false, false, false, true,  false, false },
-			{ false, false, false, false, true,  false, false, false },
-			{ false, false, false, false, false, false, false, false },
-			{ false, false, false, false, false, false, false, false },
-		}
+		.player_pieces = 0b0000000000000000000000000000100000010000000000000000000000000000,
+		.opponent_pieces = 0b0000000000000000000000000001000000001000000000000000000000000000,
+		.valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000,
 	};
 	state = temp;
 	nr_possible_moves = 4;
@@ -64,29 +45,96 @@ void init_state(void) {
 	nr_possible_moves = 4;
 }
 
-static inline color_t opposite_color(color_t c) {
-	if (c == White)
-		return Black;
-	return White;
+// Switches the player and opponent pieces
+void switch_players(void) {
+	uint64_t temp = state.player_pieces;
+	state.player_pieces = state.opponent_pieces;
+	state.opponent_pieces = temp;
+}
+
+// Using bitmasks to determine if the location in the board is occupied by a
+// piece of the current player
+bool player_piece(uint8_t column, uint8_t row) {
+	// TODO: Possible optimization by mirroring the board?
+	uint8_t column_mask = (uint64_t) 1 << (7 - column);
+	uint8_t column_val = state.player_pieces >> ((7 - row) * 8);
+	return (column_mask & column_val) > 0;
+}
+
+// Using bitmasks to determine if the location in the board is occupied by a
+// piece of the opposite player
+bool opponent_piece(uint8_t column, uint8_t row) {
+	// TODO: Possible optimization by mirroring the board?
+	uint8_t column_mask = (uint64_t) 1 << (7 - column);
+	uint8_t column_val = state.opponent_pieces >> ((7 - row) * 8);
+	return (column_mask & column_val) > 0;
+}
+
+bool any_piece(uint8_t column, uint8_t row) {
+	// TODO: Possible optimization by mirroring the board?
+	// bitwise or increases efficiency of calling player_piece and opponent
+	// piece seperately
+	uint64_t board = state.player_pieces | state.opponent_pieces;
+	uint8_t column_mask = (uint64_t) 1 << (7 - column);
+	uint8_t column_val = board >> ((7 - row) * 8);
+	return (column_mask & column_val) > 0;
+}
+
+// Places a piece at the specified location
+void place_player_piece(uint8_t column, uint8_t row) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	state.player_pieces |= mask;
+}
+
+// Places a piece at the specified location
+void remove_opponent_piece(uint8_t column, uint8_t row) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	mask ^= UINT64_MAX;
+	state.opponent_pieces &= mask;
+}
+
+// Remove a piece at the specified location
+void remove_player_piece(uint8_t column, uint8_t row) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	mask ^= UINT64_MAX;
+	state.player_pieces &= mask;
+}
+
+// Remove a piece at the specified location
+void place_opponent_piece(uint8_t column, uint8_t row) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	state.opponent_pieces |= mask;
+}
+
+bool valid_move(uint8_t column, uint8_t row) {
+	// TODO: Possible optimization by mirroring the board?
+	uint8_t column_mask = (uint64_t) 1 << (7 - column);
+	uint8_t column_val = state.valid_moves >> ((7 - row) * 8);
+	return (column_mask & column_val) > 0;
+}
+
+void set_valid_move(uint8_t column, uint8_t row, bool valid) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	if (valid) {
+		state.valid_moves |= mask;
+	} else {
+		mask ^= UINT64_MAX;
+		state.valid_moves &= mask;
+	}
 }
 
 void print_line(uint8_t y, bool show_valid_moves) {
 	printf("%" PRIu8 " ", y + 1);
 	for (uint8_t x = 0; x < 8; x++) {
 		printf("\u2502");
-		switch (state.board[x][y]) {
-			case Black:
-				printf("\u26AA");
-				break;
-			case White:
-				printf("\u26AB");
-				break;
-			default:
-				if (state.valid_moves[x][y] && show_valid_moves)
-					printf("\u25A1 ");
-				else
-					printf("  ");
-				break;
+		if (player_piece(x,y)) {
+			printf("\u26AA");
+		} else if (opponent_piece(x,y)) {
+			printf("\u26AB");
+		} else if (valid_move(x, y) && show_valid_moves) {
+			printf("\u25A1 ");
+		} else {
+			printf("  ");
 		}
 	}
 	printf("\u2502\n");
@@ -104,287 +152,303 @@ void print_state(bool show_valid_moves) {
 	printf("   a  b  c  d  e  f  g  h\n");
 }
 
-void flip_left(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+void flip_left(uint8_t column, uint8_t row) {
 	do {
 		column--;
-	} while (state.board[column][row] == op_color && column > 0);
+	} while (opponent_piece(column, row) && column > 0);
 
-	if (state.board[column][row] == color) {
+	if (player_piece(column, row)) {
 		column++;
-		for(; state.board[column][row] == op_color; column++)
-			state.board[column][row] = color;
+		for(; opponent_piece(column, row); column++) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
 
-void flip_right(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+void flip_right(uint8_t column, uint8_t row) {
 	do {
 		column++;
-	} while (state.board[column][row] == op_color && column < 7);
+	} while (opponent_piece(column, row) && column < 7);
 
-	if (state.board[column][row] == color) {
+	if (player_piece(column, row)) {
 		column--;
-		for(; state.board[column][row] == op_color; column--)
-			state.board[column][row] = color;
+		for(; opponent_piece(column, row); column--) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
 
-void flip_up(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+void flip_up(uint8_t column, uint8_t row) {
 	do {
 		row--;
-	} while (state.board[column][row] == op_color && row > 0);
+	} while (opponent_piece(column, row) && row > 0);
 
-	if (state.board[column][row] == color) {
+	if (player_piece(column, row)) {
 		row++;
-		for(; state.board[column][row] == op_color; row++)
-			state.board[column][row] = color;
+		for(; opponent_piece(column, row); row++) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
 
-void flip_down(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+void flip_down(uint8_t column, uint8_t row) {
 	do {
 		row++;
-	} while (state.board[column][row] == op_color && row < 7);
+	} while (opponent_piece(column, row) && row < 7);
 
-	if (state.board[column][row] == color) {
+	if (player_piece(column, row)) {
 		row--;
-		for(; state.board[column][row] == op_color; row--)
-			state.board[column][row] = color;
+		for(; opponent_piece(column, row); row--) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
 
-void flip_left_up(uint8_t column, uint8_t row, color_t color, color_t op_color) {
-	do {
-		column--;
-		row--;
-	} while (state.board[column][row] == op_color && row > 0 && column > 0);
-
-	if (state.board[column][row] == color) {
-		column++;
-		row++;
-		for(; state.board[column][row] == op_color; row++, column++)
-			state.board[column][row] = color;
-	}
-}
-
-void flip_right_up(uint8_t column, uint8_t row, color_t color, color_t op_color) {
-	do {
-		column++;
-		row--;
-	} while (state.board[column][row] == op_color && row > 0 && column < 7);
-
-	if (state.board[column][row] == color) {
-		column--;
-		row++;
-		for(; state.board[column][row] == op_color; row++, column--)
-			state.board[column][row] = color;
-	}
-}
-
-void flip_left_down(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+void flip_left_up(uint8_t column, uint8_t row) {
 	do {
 		column--;
-		row++;
-	} while (state.board[column][row] == op_color && row < 7 && column > 0);
-
-	if (state.board[column][row] == color) {
-		column++;
 		row--;
-		for(; state.board[column][row] == op_color; row--, column++)
-			state.board[column][row] = color;
+	} while (opponent_piece(column, row) && row > 0 && column > 0);
+
+	if (player_piece(column, row)) {
+		column++;
+		row++;
+		for(; opponent_piece(column, row); row++, column++) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
-void flip_right_down(uint8_t column, uint8_t row, color_t color, color_t op_color) {
+
+void flip_right_up(uint8_t column, uint8_t row) {
+	do {
+		column++;
+		row--;
+	} while (opponent_piece(column, row) && row > 0 && column < 7);
+
+	if (player_piece(column, row)) {
+		column--;
+		row++;
+		for(; opponent_piece(column, row); row++, column--) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
+	}
+}
+
+void flip_left_down(uint8_t column, uint8_t row) {
+	do {
+		column--;
+		row++;
+	} while (opponent_piece(column, row) && row < 7 && column > 0);
+
+	if (player_piece(column, row)) {
+		column++;
+		row--;
+		for(; opponent_piece(column, row); row--, column++) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
+	}
+}
+void flip_right_down(uint8_t column, uint8_t row) {
 	do {
 		column++;
 		row++;
-	} while (state.board[column][row] == op_color && row < 7 && column < 7);
+	} while (opponent_piece(column, row) && row < 7 && column < 7);
 
-	if (state.board[column][row] == color) {
+	if (player_piece(column, row)) {
 		column--;
 		row--;
-		for(; state.board[column][row] == op_color; row--, column--)
-			state.board[column][row] = color;
+		for(; opponent_piece(column, row); row--, column--) {
+			place_player_piece(column, row);
+			remove_opponent_piece(column, row);
+		}
 	}
 }
 
-void flip_neighbours(uint8_t column, uint8_t row, color_t color) {
-	color_t op_color = opposite_color(color);
-
+void flip_neighbours(uint8_t column, uint8_t row) {
 	if (column != 0)
-		flip_left(column, row, color, op_color);
+		flip_left(column, row);
 	if (column != 7)
-		flip_right(column, row, color, op_color);
+		flip_right(column, row);
 	if (row != 0)
-		flip_up(column, row, color, op_color);
+		flip_up(column, row);
 	if (row != 7)
-		flip_down(column, row, color, op_color);
+		flip_down(column, row);
 	if (column != 0 && row != 0)
-		flip_left_up(column, row, color, op_color);
+		flip_left_up(column, row);
 	if (column != 7 && row != 0)
-		flip_right_up(column, row, color, op_color);
+		flip_right_up(column, row);
 	if (column != 0 && row != 7)
-		flip_left_down(column, row, color, op_color);
+		flip_left_down(column, row);
 	if (column != 7 && row != 7)
-		flip_right_down(column, row, color, op_color);
+		flip_right_down(column, row);
 }
 
-void place_piece(uint8_t column, uint8_t row, color_t color) {
-	if (state.board[column][row] != None) {
-		printf("ERROR: Tried to place piece on ccupied field\n");
+void place_piece(uint8_t column, uint8_t row) {
+	if (any_piece(column, row)) {
+		printf("ERROR: Tried to place piece on occupied field\n");
 		exit(EXIT_FAILURE);
 	}
 
-	state.board[column][row] = color;
+	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
 
-	flip_neighbours(column, row, color);
+	place_player_piece(column, row);
+
+	flip_neighbours(column, row);
 }
 
-bool valid_left(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_left(uint8_t column, uint8_t row) {
 	if (column <= 1)
 		return false;
 
 	column--;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column--;
-		} while (column > 0 && state.board[column][row] == op_color);
+		} while (column > 0 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_right(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_right(uint8_t column, uint8_t row) {
 	if (column >= 6)
 		return false;
 
 	column++;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column++;
-		} while (column < 7 && state.board[column][row] == op_color);
+		} while (column < 7 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_up(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_up(uint8_t column, uint8_t row) {
 	if (row <= 1)
 		return false;
 
 	row--;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			row--;
-		} while (row > 0 && state.board[column][row] == op_color);
+		} while (row > 0 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_down(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_down(uint8_t column, uint8_t row) {
 	if (row >= 6)
 		return false;
 
 	row++;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			row++;
-		} while (row < 7 && state.board[column][row] == op_color);
+		} while (row < 7 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_left_up(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_left_up(uint8_t column, uint8_t row) {
 	if (column <= 1 || row <= 1)
 		return false;
 
 	column--;
 	row--;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column--;
 			row--;
-		} while (column > 0 && row > 0 && state.board[column][row] == op_color);
+		} while (column > 0 && row > 0 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_right_up(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_right_up(uint8_t column, uint8_t row) {
 	if (column >= 6 || row <= 1)
 		return false;
 
 	column++;
 	row--;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column++;
 			row--;
-		} while (column < 7 && row > 0&& state.board[column][row] == op_color);
+		} while (column < 7 && row > 0&& opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_left_down(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_left_down(uint8_t column, uint8_t row) {
 	if (column <= 1 || row >= 6)
 		return false;
 
 	column--;
 	row++;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column--;
 			row++;
-		} while (column > 0 && row < 7 && state.board[column][row] == op_color);
+		} while (column > 0 && row < 7 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
 	return false;
 }
 
-bool valid_right_down(uint8_t column, uint8_t row, color_t op_color) {
+bool valid_right_down(uint8_t column, uint8_t row) {
 	if (column >= 6 || row >= 6)
 		return false;
 
 	column++;
 	row++;
 
-	if (state.board[column][row] == op_color) {
+	if (opponent_piece(column, row)) {
 		do {
 			column++;
 			row++;
-		} while (column < 7 && row < 7 && state.board[column][row] == op_color);
+		} while (column < 7 && row < 7 && opponent_piece(column, row));
 
-		if (state.board[column][row] == state.turn)
+		if (player_piece(column, row))
 			return true;
 	}
 
@@ -392,19 +456,18 @@ bool valid_right_down(uint8_t column, uint8_t row, color_t op_color) {
 }
 
 bool is_valid_move(uint8_t column, uint8_t row) {
-	if (state.board[column][row] != None)
+	if (any_piece(column, row))
 		return false;
 
-	color_t op_color = opposite_color(state.turn);
 	return (
-		valid_left(column, row, op_color) ||
-		valid_right(column, row, op_color) ||
-		valid_up(column, row, op_color) ||
-		valid_down(column, row, op_color) ||
-		valid_left_up(column, row, op_color) ||
-		valid_right_up(column, row, op_color) ||
-		valid_left_down(column, row, op_color) ||
-		valid_right_down(column, row, op_color)
+		valid_left(column, row) ||
+		valid_right(column, row) ||
+		valid_up(column, row) ||
+		valid_down(column, row) ||
+		valid_left_up(column, row) ||
+		valid_right_up(column, row) ||
+		valid_left_down(column, row) ||
+		valid_right_down(column, row)
 	);
 }
 
@@ -413,7 +476,7 @@ void update_valid_moves(void) {
 	for (uint8_t column = 0; column < 8; column++) {
 		for (uint8_t row = 0; row < 8; row++) {
 			bool valid = is_valid_move(column, row);
-			state.valid_moves[column][row] = valid;
+			set_valid_move(column, row, valid);
 			if (valid) {
 				possible_moves[nr_possible_moves].column = column;
 				possible_moves[nr_possible_moves].row = row;
@@ -427,15 +490,11 @@ void update_valid_moves(void) {
 bool any_move_valid(void) {
 	for (uint8_t column = 0; column <= 7; column++) {
 		for (uint8_t row = 0; row <= 7; row++) {
-			if (state.valid_moves[column][row])
+			if (valid_move(column, row))
 				return true;
 		}
 	}
 	return false;
-}
-
-void switch_player(void) {
-	state.turn = state.turn == White ? Black : White;
 }
 
 #endif

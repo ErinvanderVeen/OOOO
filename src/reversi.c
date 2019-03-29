@@ -7,13 +7,16 @@
 
 #include "state.h"
 #include "ai.h"
+#include "debug.h"
+
+typedef enum {Human, Computer} player_t;
 
 player_t white = Human;
 player_t black = Computer;
 
-#define DEBUG 0
-#define debug_print(fmt, ...) \
-            do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+typedef enum {Black, White} color_t;
+
+color_t turn = Black;
 
 bool finished = false;
 bool white_skipped = false;
@@ -22,18 +25,8 @@ bool black_skipped = false;
 coordinate_t human_turn(void) {
 	coordinate_t choice;
 
-	switch (state.turn) {
-		case White:
-			printf("White? ");
-			break;
-		case Black:
-			printf("Black? ");
-			break;
-		default:
-			printf("ERROR: Could not determine which player's turn it is.\n");
-			exit(EXIT_FAILURE);
-			break;
-	}
+	print_state(true);
+	printf("Coordinate? ");
 
 	// Read a-h, convert to 0-7
 	choice.column = (uint8_t) getchar() - 97;
@@ -48,7 +41,7 @@ coordinate_t human_turn(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (!state.valid_moves[choice.column][choice.row]) {
+	if (!valid_move(choice.column, choice.row)) {
 		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", choice.column + 97, choice.row + 1);
 		exit(EXIT_FAILURE);
 	}
@@ -58,7 +51,7 @@ coordinate_t human_turn(void) {
 
 void perform_turn(void) {
 	if (!any_move_valid()) {
-		if (state.turn == White)
+		if (turn == White)
 			white_skipped = true;
 		else
 			black_skipped = true;
@@ -66,20 +59,20 @@ void perform_turn(void) {
 		return;
 	}
 
-	if (state.turn == White)
+	if (turn == White)
 		white_skipped = false;
 	else
 		black_skipped = false;
 
 	coordinate_t choice;
 
-	if ((state.turn == White && white == Human) || (state.turn == Black && black == Human)) {
+	if ((turn == White && white == Human) || (turn == Black && black == Human)) {
 		choice = human_turn();
 	} else {
 		choice = ai_turn();
 	}
 
-	place_piece(choice.column, choice.row, state.turn);
+	place_piece(choice.column, choice.row);
 }
 
 int main(void) {
@@ -93,9 +86,12 @@ int main(void) {
 	srand(time(NULL));
 
 	while (!finished) {
-		print_state(true);
 		perform_turn();
-		switch_player();
+		switch_players();
+		if (turn == White)
+			turn = Black;
+		else
+			turn = White;
 		update_valid_moves();
 	}
 
