@@ -94,9 +94,34 @@
 	booktitle={19th Annual Conference Gesellschaft f{\"u}r Klassifikation eV},
 	volume={2},
 	year={1995},
-	organization={Citeseer}
+	organization={Citeseer},
 	annotate={
 		A very nice overview of one of the strongest Othello programs that
 		exists. Very usefull as inspiration.
+	}
+}
+
+@phdthesis{chaslot2010monte,
+	title={Monte-carlo tree search},
+	author={Chaslot, Guillaume Maurice Jean-Bernard},
+	year={2010},
+	school={Maastricht University},
+	annotate={
+		This thesis discusses Monte-carlo tree search, which is a possible
+		alternative to AlphaBeta search. I came across this thesis when looking
+		at Othello AI implementations.  A big advantage to this method is that
+		it does not require an evaluation function. Since we are not domain
+		experts, the advantage should be self-explanatory.
+
+		MCTS consists of four main steps:
+		\begin{itemize}
+			\item The tree is traversed until we reach a node whose child is not yet part of the tree.
+			\item We add the node the tree.
+			\item Moves are played in self-play until the end of the game is reached.
+			\item The simulated game is propagated backwards.
+		\end{itemize}
+
+		Note from Erin: I had an AI using this new method play against Edax,
+		and Edax beat this new method by 62-0.
 	}
 }
