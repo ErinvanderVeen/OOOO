@@ -1,0 +1,9 @@
+Compile with the command
+    mvn package
+
+Run with the command
+    java -jar ./target/othello-1.0.jar [swing]
+
+Provide the string "swing" without quotes to play Reversi using a Swing 
+interface. No argument results in the interface defaulting to a terminal
+based one.
