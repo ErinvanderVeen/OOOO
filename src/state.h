@@ -204,7 +204,6 @@ void set_valid_move(uint8_t column, uint8_t row, bool valid) {
 	}
 }
 
-
 /**
  * Print a graphical representation of a row in the field.
  *
@@ -271,32 +270,40 @@ void place_piece(uint8_t column, uint8_t row) {
 }
 
 /**
- * Check if a move is valid. As long as there is an opponent piece in the 
+ * Check if a move is valid. As long as there is an opponent piece in the
  * direction currently looked at, we will move one further step in the same
  * direction until either the edge or our own piece is encountered.
  *
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool valid_any(uint8_t col, uint8_t row) {
+bool valid_any(uint8_t column, uint8_t row) {
+	bool is_valid = false;
+	to_flip[column][row] = 0;
+
 	for(int8_t y = -1; y <= 1; y++) {
 		for(int8_t x = -1; x <= 1; x++) {
-			int8_t xx = col + x;
+			int8_t xx = column + x;
 			int8_t yy = row + y;
 			if(x == 0 && y == 0 || !opponent_piece(xx, yy))
 				continue;
+
 			do {
 				xx += x;
 				yy += y;
-				if(!opponent_piece(xx, yy))
+				if (!opponent_piece(xx, yy))
 					break;
-			} while(xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
-			
-			if (player_piece(xx, yy))
-				return true;
+			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
+
+			if (player_piece(xx, yy)) {
+				for (; xx != column && yy != row; xx -= x, yy -= y) {
+					to_flip[column][row] |= (uint64_t) 1 << ((7 - xx) + ((7 - yy) * 8));
+				}
+				is_valid = true;
+			}
 		}
 	}
-	return false;
+	return is_valid;
 }
 
 /**
