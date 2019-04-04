@@ -405,7 +405,7 @@ bool valid_any(uint8_t col, uint8_t row) {
 		for(int8_t x = -1; x <= 1; x++) {
 			int8_t xx = col + x;
 			int8_t yy = row + y;
-			if(x == 0 && y == 0 || !opponent_piece(xx, yy))
+			if((x == 0 && y == 0) || !opponent_piece(xx, yy))
 				continue;
 			do {
 				xx += x;
