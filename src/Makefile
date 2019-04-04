@@ -1,8 +1,11 @@
+CC = clang
+CFLAGS = -Wall -Wextra
+
 all: reversi.c state.h
-	$(CC) -Wall -Wextra -Ofast reversi.c -o reversi.out
+	$(CC) $(CFLAGS) -Ofast reversi.c -o reversi.out
 
 debug: reversi.c state.h
-	$(CC) -Wall -Wextra -g reversi.c -o reversi.out
+	$(CC) $(CFLAGS) -fsanitize=address -g reversi.c -o reversi.out
 
 test: debug
 	./reversi.out < tests/t1
