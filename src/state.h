@@ -43,7 +43,7 @@ uint8_t nr_possible_moves;
  * Stores the intermediate result of all pieces that must be flipped when a
  * move is performed
  */
-uint64_t to_flip[8][8] = {0};
+uint64_t to_flip[8][8] = {{0}};
 
 /**
  * Initializes the default state of Othello
@@ -82,29 +82,25 @@ void switch_players(void) {
 }
 
 /**
- * Checks if the current player has a piece in the specified location
+ * Checks if the specified board has a piece in the specified location
  *
+ * @param[in] The column of the desired location
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool player_piece(uint8_t column, uint8_t row) {
+bool is_piece(uint64_t board, uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = player_pieces >> ((7 - row) * 8);
+	uint8_t column_val = board >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
 }
 
-/**
- * Checks if the opposing player has a piece in the specified location
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
+bool player_piece(uint8_t column, uint8_t row) {
+	return is_piece(player_pieces, column, row);
+}
+
 bool opponent_piece(uint8_t column, uint8_t row) {
-	// TODO: Possible optimization by mirroring the board?
-	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = opponent_pieces >> ((7 - row) * 8);
-	return (column_mask & column_val) > 0;
+	return is_piece(opponent_pieces, column, row);
 }
 
 /**
@@ -124,6 +120,18 @@ bool any_piece(uint8_t column, uint8_t row) {
 }
 
 /**
+ * Places a piece on the specified location of the specified board
+ *
+ * @param[in,out] The board on which the piece must be placed
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
+void place_piece(uint64_t *board, uint8_t column, uint8_t row) {
+	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
+	*board |= mask;
+}
+
+/**
  * Places a piece of the current player on the specified location.
  * Note: Does not remove an opposing piece if it is already there.
  *
@@ -131,8 +139,7 @@ bool any_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void place_player_piece(uint8_t column, uint8_t row) {
-	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	player_pieces |= mask;
+	place_piece(&player_pieces, column, row);
 }
 
 /**
@@ -145,8 +152,20 @@ void place_player_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void place_opponent_piece(uint8_t column, uint8_t row) {
+	place_piece(&opponent_pieces, column, row);
+}
+
+/**
+ * Removes the piece of the board on the specified location
+ *
+ * @param[in,out] The board of which the piece must be removed
+ * @param[in] The column of the desired location
+ * @param[in] The row of the desired location
+ */
+void remove_piece(uint64_t* board, uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	opponent_pieces |= mask;
+	mask ^= UINT64_MAX;
+	*board &= mask;
 }
 
 /**
@@ -156,9 +175,7 @@ void place_opponent_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void remove_player_piece(uint8_t column, uint8_t row) {
-	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	mask ^= UINT64_MAX;
-	player_pieces &= mask;
+	remove_piece(&player_pieces, column, row);
 }
 
 /**
@@ -168,9 +185,7 @@ void remove_player_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void remove_opponent_piece(uint8_t column, uint8_t row) {
-	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	mask ^= UINT64_MAX;
-	opponent_pieces &= mask;
+	remove_piece(&opponent_pieces, column, row);
 }
 
 /**
@@ -256,7 +271,7 @@ void flip_neighbours(uint8_t column, uint8_t row) {
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-void place_piece(uint8_t column, uint8_t row) {
+void do_move(uint8_t column, uint8_t row) {
 	if (any_piece(column, row)) {
 		printf("ERROR: Tried to place piece on occupied field\n");
 		exit(EXIT_FAILURE);
