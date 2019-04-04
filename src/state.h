@@ -296,7 +296,7 @@ bool valid_any(uint8_t column, uint8_t row) {
 			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
 
 			if (player_piece(xx, yy)) {
-				for (; xx != column && yy != row; xx -= x, yy -= y) {
+				for (; xx != column || yy != row; xx -= x, yy -= y) {
 					to_flip[column][row] |= (uint64_t) 1 << ((7 - xx) + ((7 - yy) * 8));
 				}
 				is_valid = true;
