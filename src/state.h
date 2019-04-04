@@ -40,12 +40,23 @@ coordinate_t* possible_moves;
 uint8_t nr_possible_moves;
 
 /**
+ * Stores the intermediate result of all pieces that must be flipped when a
+ * move is performed
+ */
+uint64_t to_flip[8][8] = {0};
+
+/**
  * Initializes the default state of Othello
  */
 void init_state(void) {
 	player_pieces = 0b0000000000000000000000000000100000010000000000000000000000000000;
 	opponent_pieces = 0b0000000000000000000000000001000000001000000000000000000000000000;
 	valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
+
+	to_flip[2][3] = 0b0000000000000000000000000001000000000000000000000000000000000000;
+	to_flip[3][2] = 0b0000000000000000000000000001000000000000000000000000000000000000;
+	to_flip[4][5] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	to_flip[5][4] = 0b0000000000000000000000000000000000001000000000000000000000000000;
 
 	nr_possible_moves = 4;
 	// If not enough, extend
@@ -193,7 +204,6 @@ void set_valid_move(uint8_t column, uint8_t row, bool valid) {
 	}
 }
 
-
 /**
  * Print a graphical representation of a row in the field.
  *
@@ -234,142 +244,9 @@ void print_state(bool show_valid_moves) {
 	printf("   a  b  c  d  e  f  g  h\n");
 }
 
-void flip_left(uint8_t column, uint8_t row) {
-	do {
-		column--;
-	} while (opponent_piece(column, row) && column > 0);
-
-	if (player_piece(column, row)) {
-		column++;
-		for(; opponent_piece(column, row); column++) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_right(uint8_t column, uint8_t row) {
-	do {
-		column++;
-	} while (opponent_piece(column, row) && column < 7);
-
-	if (player_piece(column, row)) {
-		column--;
-		for(; opponent_piece(column, row); column--) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_up(uint8_t column, uint8_t row) {
-	do {
-		row--;
-	} while (opponent_piece(column, row) && row > 0);
-
-	if (player_piece(column, row)) {
-		row++;
-		for(; opponent_piece(column, row); row++) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_down(uint8_t column, uint8_t row) {
-	do {
-		row++;
-	} while (opponent_piece(column, row) && row < 7);
-
-	if (player_piece(column, row)) {
-		row--;
-		for(; opponent_piece(column, row); row--) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_left_up(uint8_t column, uint8_t row) {
-	do {
-		column--;
-		row--;
-	} while (opponent_piece(column, row) && row > 0 && column > 0);
-
-	if (player_piece(column, row)) {
-		column++;
-		row++;
-		for(; opponent_piece(column, row); row++, column++) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_right_up(uint8_t column, uint8_t row) {
-	do {
-		column++;
-		row--;
-	} while (opponent_piece(column, row) && row > 0 && column < 7);
-
-	if (player_piece(column, row)) {
-		column--;
-		row++;
-		for(; opponent_piece(column, row); row++, column--) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
-void flip_left_down(uint8_t column, uint8_t row) {
-	do {
-		column--;
-		row++;
-	} while (opponent_piece(column, row) && row < 7 && column > 0);
-
-	if (player_piece(column, row)) {
-		column++;
-		row--;
-		for(; opponent_piece(column, row); row--, column++) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-void flip_right_down(uint8_t column, uint8_t row) {
-	do {
-		column++;
-		row++;
-	} while (opponent_piece(column, row) && row < 7 && column < 7);
-
-	if (player_piece(column, row)) {
-		column--;
-		row--;
-		for(; opponent_piece(column, row); row--, column--) {
-			place_player_piece(column, row);
-			remove_opponent_piece(column, row);
-		}
-	}
-}
-
 void flip_neighbours(uint8_t column, uint8_t row) {
-	if (column != 0)
-		flip_left(column, row);
-	if (column != 7)
-		flip_right(column, row);
-	if (row != 0)
-		flip_up(column, row);
-	if (row != 7)
-		flip_down(column, row);
-	if (column != 0 && row != 0)
-		flip_left_up(column, row);
-	if (column != 7 && row != 0)
-		flip_right_up(column, row);
-	if (column != 0 && row != 7)
-		flip_left_down(column, row);
-	if (column != 7 && row != 7)
-		flip_right_down(column, row);
+	player_pieces |= to_flip[column][row];
+	opponent_pieces &= player_pieces ^ UINT64_MAX;
 }
 
 /**
@@ -393,32 +270,40 @@ void place_piece(uint8_t column, uint8_t row) {
 }
 
 /**
- * Check if a move is valid. As long as there is an opponent piece in the 
+ * Check if a move is valid. As long as there is an opponent piece in the
  * direction currently looked at, we will move one further step in the same
  * direction until either the edge or our own piece is encountered.
  *
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool valid_any(uint8_t col, uint8_t row) {
+bool valid_any(uint8_t column, uint8_t row) {
+	bool is_valid = false;
+	to_flip[column][row] = 0;
+
 	for(int8_t y = -1; y <= 1; y++) {
 		for(int8_t x = -1; x <= 1; x++) {
-			int8_t xx = col + x;
+			int8_t xx = column + x;
 			int8_t yy = row + y;
 			if((x == 0 && y == 0) || !opponent_piece(xx, yy))
 				continue;
+
 			do {
 				xx += x;
 				yy += y;
-				if(!opponent_piece(xx, yy))
+				if (!opponent_piece(xx, yy))
 					break;
-			} while(xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
-			
-			if (player_piece(xx, yy))
-				return true;
+			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
+
+			if (player_piece(xx, yy)) {
+				for (; xx != column || yy != row; xx -= x, yy -= y) {
+					to_flip[column][row] |= (uint64_t) 1 << ((7 - xx) + ((7 - yy) * 8));
+				}
+				is_valid = true;
+			}
 		}
 	}
-	return false;
+	return is_valid;
 }
 
 /**
