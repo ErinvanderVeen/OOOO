@@ -145,8 +145,6 @@ void place_player_piece(uint8_t column, uint8_t row) {
 /**
  * Places a piece of the opposing player on the specified location.
  * Note: Does not remove an opposing piece if it is already there.
- * See switch_to_player_piece(uint8_t column, uint8_t row) if this is desired.
- * TODO: create switch_to_player
  *
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
@@ -189,33 +187,20 @@ void remove_opponent_piece(uint8_t column, uint8_t row) {
 }
 
 /**
- * Looks in the valid_move bitboard if the specified location would be a valid
- * move for the current player.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-bool valid_move(uint8_t column, uint8_t row) {
-	// TODO: Possible optimization by mirroring the board?
-	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = valid_moves >> ((7 - row) * 8);
-	return (column_mask & column_val) > 0;
-}
-
-/**
  * Sets a value of the valid_move bitboard.
  *
+ * @param[out] The bitboard with the valid moves
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  * @param[in] Wether the move would be valid/invalid.
  */
-void set_valid_move(uint8_t column, uint8_t row, bool valid) {
+void set_valid_move(uint64_t *valid_moves, uint8_t column, uint8_t row, bool valid) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
 	if (valid) {
-		valid_moves |= mask;
+		*valid_moves |= mask;
 	} else {
 		mask ^= UINT64_MAX;
-		valid_moves &= mask;
+		*valid_moves &= mask;
 	}
 }
 
@@ -233,7 +218,7 @@ void print_line(uint8_t y, bool show_valid_moves) {
 			printf("\u26AA");
 		} else if (opponent_piece(x,y)) {
 			printf("\u26AB");
-		} else if (valid_move(x, y) && show_valid_moves) {
+		} else if (is_piece(valid_moves, x, y) && show_valid_moves) {
 			printf("\u25A1 ");
 		} else {
 			printf("  ");
@@ -259,9 +244,16 @@ void print_state(bool show_valid_moves) {
 	printf("   a  b  c  d  e  f  g  h\n");
 }
 
-void flip_neighbours(uint8_t column, uint8_t row) {
-	player_pieces |= to_flip[column][row];
-	opponent_pieces &= player_pieces ^ UINT64_MAX;
+/**
+ * Flips pieces on the board given the instruction on what pieces to flip
+ *
+ * @param[in,out] The player board
+ * @param[in,out] The opponents board
+ * @param[in] The mask of the pieces to be flipped
+ */
+void flip_neighbours(uint64_t *player_pieces, uint64_t *opponent_pieces, uint64_t flip_mask) {
+	*player_pieces |= flip_mask;
+	*opponent_pieces &= *player_pieces ^ UINT64_MAX;
 }
 
 /**
@@ -279,9 +271,9 @@ void do_move(uint8_t column, uint8_t row) {
 
 	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
 
-	place_player_piece(column, row);
+	place_piece(&player_pieces, column, row);
 
-	flip_neighbours(column, row);
+	flip_neighbours(&player_pieces, &opponent_pieces, to_flip[column][row]);
 }
 
 /**
@@ -344,7 +336,7 @@ void update_valid_moves(void) {
 	for (uint8_t column = 0; column < 8; column++) {
 		for (uint8_t row = 0; row < 8; row++) {
 			bool valid = is_valid_move(column, row);
-			set_valid_move(column, row, valid);
+			set_valid_move(&valid_moves, column, row, valid);
 			if (valid) {
 				possible_moves[nr_possible_moves].column = column;
 				possible_moves[nr_possible_moves].row = row;
@@ -360,7 +352,7 @@ void update_valid_moves(void) {
 bool any_move_valid(void) {
 	for (uint8_t column = 0; column <= 7; column++) {
 		for (uint8_t row = 0; row <= 7; row++) {
-			if (valid_move(column, row))
+			if (is_piece(valid_moves, column, row))
 				return true;
 		}
 	}

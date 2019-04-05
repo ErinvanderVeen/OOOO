@@ -41,7 +41,7 @@ coordinate_t human_turn(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (!valid_move(choice.column, choice.row)) {
+	if (!is_piece(valid_moves, choice.column, choice.row)) {
 		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", choice.column + 97, choice.row + 1);
 		exit(EXIT_FAILURE);
 	}
