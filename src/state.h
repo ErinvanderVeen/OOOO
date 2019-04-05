@@ -9,12 +9,12 @@
  * is no need for the engine to distinguish between if it is black or white.
  * All such information should be in the wrapper.
  */
-uint64_t player_pieces;
+uint64_t player_b;
 
 /**
  * Bitboard of all pieces considered to belong to the opposing player
  */
-uint64_t opponent_pieces;
+uint64_t opponent_b;
 
 /**
  * Bitboard with valid moves
@@ -49,8 +49,8 @@ uint64_t to_flip[8][8] = {{0}};
  * Initializes the default state of Othello
  */
 void init_state(void) {
-	player_pieces = 0b0000000000000000000000000000100000010000000000000000000000000000;
-	opponent_pieces = 0b0000000000000000000000000001000000001000000000000000000000000000;
+	player_b = 0b0000000000000000000000000000100000010000000000000000000000000000;
+	opponent_b = 0b0000000000000000000000000001000000001000000000000000000000000000;
 	valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
 
 	to_flip[2][3] = 0b0000000000000000000000000001000000000000000000000000000000000000;
@@ -76,9 +76,9 @@ void init_state(void) {
  * Swiches the current player with its opponent
  */
 void switch_players(void) {
-	uint64_t temp = player_pieces;
-	player_pieces = opponent_pieces;
-	opponent_pieces = temp;
+	uint64_t temp = player_b;
+	player_b = opponent_b;
+	opponent_b = temp;
 }
 
 /**
@@ -96,11 +96,11 @@ bool is_piece(uint64_t board, uint8_t column, uint8_t row) {
 }
 
 bool player_piece(uint8_t column, uint8_t row) {
-	return is_piece(player_pieces, column, row);
+	return is_piece(player_b, column, row);
 }
 
 bool opponent_piece(uint8_t column, uint8_t row) {
-	return is_piece(opponent_pieces, column, row);
+	return is_piece(opponent_b, column, row);
 }
 
 /**
@@ -113,7 +113,7 @@ bool any_piece(uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	// bitwise or increases efficiency of calling player_piece and opponent
 	// piece seperately
-	uint64_t board = player_pieces | opponent_pieces;
+	uint64_t board = player_b | opponent_b;
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
 	uint8_t column_val = board >> ((7 - row) * 8);
 	return (column_mask & column_val) > 0;
@@ -139,7 +139,7 @@ void place_piece(uint64_t *board, uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void place_player_piece(uint8_t column, uint8_t row) {
-	place_piece(&player_pieces, column, row);
+	place_piece(&player_b, column, row);
 }
 
 /**
@@ -150,7 +150,7 @@ void place_player_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void place_opponent_piece(uint8_t column, uint8_t row) {
-	place_piece(&opponent_pieces, column, row);
+	place_piece(&opponent_b, column, row);
 }
 
 /**
@@ -173,7 +173,7 @@ void remove_piece(uint64_t* board, uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void remove_player_piece(uint8_t column, uint8_t row) {
-	remove_piece(&player_pieces, column, row);
+	remove_piece(&player_b, column, row);
 }
 
 /**
@@ -183,7 +183,7 @@ void remove_player_piece(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 void remove_opponent_piece(uint8_t column, uint8_t row) {
-	remove_piece(&opponent_pieces, column, row);
+	remove_piece(&opponent_b, column, row);
 }
 
 /**
@@ -251,9 +251,9 @@ void print_state(bool show_valid_moves) {
  * @param[in,out] The opponents board
  * @param[in] The mask of the pieces to be flipped
  */
-void flip_neighbours(uint64_t *player_pieces, uint64_t *opponent_pieces, uint64_t flip_mask) {
-	*player_pieces |= flip_mask;
-	*opponent_pieces &= *player_pieces ^ UINT64_MAX;
+void flip_neighbours(uint64_t *player_b, uint64_t *opponent_b, uint64_t flip_mask) {
+	*player_b |= flip_mask;
+	*opponent_b &= *player_b ^ UINT64_MAX;
 }
 
 /**
@@ -271,9 +271,9 @@ void do_move(uint8_t column, uint8_t row) {
 
 	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
 
-	place_piece(&player_pieces, column, row);
+	place_piece(&player_b, column, row);
 
-	flip_neighbours(&player_pieces, &opponent_pieces, to_flip[column][row]);
+	flip_neighbours(&player_b, &opponent_b, to_flip[column][row]);
 }
 
 /**
