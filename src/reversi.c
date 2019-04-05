@@ -72,7 +72,7 @@ void perform_turn(void) {
 		choice = ai_turn();
 	}
 
-	place_piece(choice.column, choice.row);
+	do_move(choice.column, choice.row);
 }
 
 int main(void) {
