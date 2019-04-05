@@ -95,30 +95,6 @@ bool is_piece(uint64_t board, uint8_t column, uint8_t row) {
 	return (column_mask & column_val) > 0;
 }
 
-bool player_piece(uint8_t column, uint8_t row) {
-	return is_piece(player_b, column, row);
-}
-
-bool opponent_piece(uint8_t column, uint8_t row) {
-	return is_piece(opponent_b, column, row);
-}
-
-/**
- * Checks if the either player has a piece in the specified location
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-bool any_piece(uint8_t column, uint8_t row) {
-	// TODO: Possible optimization by mirroring the board?
-	// bitwise or increases efficiency of calling player_piece and opponent
-	// piece seperately
-	uint64_t board = player_b | opponent_b;
-	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = board >> ((7 - row) * 8);
-	return (column_mask & column_val) > 0;
-}
-
 /**
  * Places a piece on the specified location of the specified board
  *
@@ -132,28 +108,6 @@ void place_piece(uint64_t *board, uint8_t column, uint8_t row) {
 }
 
 /**
- * Places a piece of the current player on the specified location.
- * Note: Does not remove an opposing piece if it is already there.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-void place_player_piece(uint8_t column, uint8_t row) {
-	place_piece(&player_b, column, row);
-}
-
-/**
- * Places a piece of the opposing player on the specified location.
- * Note: Does not remove an opposing piece if it is already there.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-void place_opponent_piece(uint8_t column, uint8_t row) {
-	place_piece(&opponent_b, column, row);
-}
-
-/**
  * Removes the piece of the board on the specified location
  *
  * @param[in,out] The board of which the piece must be removed
@@ -164,26 +118,6 @@ void remove_piece(uint64_t* board, uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
 	mask ^= UINT64_MAX;
 	*board &= mask;
-}
-
-/**
- * Removes the piece of the current player on the specified location.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-void remove_player_piece(uint8_t column, uint8_t row) {
-	remove_piece(&player_b, column, row);
-}
-
-/**
- * Removes the piece of the opposing player on the specified location.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-void remove_opponent_piece(uint8_t column, uint8_t row) {
-	remove_piece(&opponent_b, column, row);
 }
 
 /**
@@ -214,9 +148,9 @@ void print_line(uint8_t y, bool show_valid_moves) {
 	printf("%" PRIu8 " ", y + 1);
 	for (uint8_t x = 0; x < 8; x++) {
 		printf("\u2502");
-		if (player_piece(x,y)) {
+		if (is_piece(player_b, x, y)) {
 			printf("\u26AA");
-		} else if (opponent_piece(x,y)) {
+		} else if (is_piece(opponent_b, x, y)) {
 			printf("\u26AB");
 		} else if (is_piece(valid_moves, x, y) && show_valid_moves) {
 			printf("\u25A1 ");
@@ -264,7 +198,7 @@ void flip_neighbours(uint64_t *player_b, uint64_t *opponent_b, uint64_t flip_mas
  * @param[in] The row of the desired location
  */
 void do_move(uint8_t column, uint8_t row) {
-	if (any_piece(column, row)) {
+	if (is_piece(player_b | opponent_b, column, row)) {
 		printf("ERROR: Tried to place piece on occupied field\n");
 		exit(EXIT_FAILURE);
 	}
@@ -292,17 +226,17 @@ bool valid_any(uint8_t column, uint8_t row) {
 		for(int8_t x = -1; x <= 1; x++) {
 			int8_t xx = column + x;
 			int8_t yy = row + y;
-			if((x == 0 && y == 0) || !opponent_piece(xx, yy))
+			if((x == 0 && y == 0) || !is_piece(opponent_b, xx, yy))
 				continue;
 
 			do {
 				xx += x;
 				yy += y;
-				if (!opponent_piece(xx, yy))
+				if (!is_piece(opponent_b, xx, yy))
 					break;
 			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
 
-			if (player_piece(xx, yy)) {
+			if (is_piece(player_b, xx, yy)) {
 				for (; xx != column || yy != row; xx -= x, yy -= y) {
 					to_flip[column][row] |= (uint64_t) 1 << ((7 - xx) + ((7 - yy) * 8));
 				}
@@ -321,7 +255,7 @@ bool valid_any(uint8_t column, uint8_t row) {
  * @param[in] The row of the desired location
  */
 bool is_valid_move(uint8_t column, uint8_t row) {
-	if (any_piece(column, row))
+	if (is_piece(player_b | opponent_b, column, row))
 		return false;
 
 	return valid_any(column, row);
