@@ -1,25 +1,7 @@
-#ifndef STATE_H
-#define STATE_H
+#ifndef STATE_T_H
+#define STATE_T_H
 
 #include "debug.h"
-
-/**
- * Bitboard of all pieces considered to belong to the current player.
- * Note, there is no explicit distinction between white/black, as there
- * is no need for the engine to distinguish between if it is black or white.
- * All such information should be in the wrapper.
- */
-uint64_t player_b;
-
-/**
- * Bitboard of all pieces considered to belong to the opposing player
- */
-uint64_t opponent_b;
-
-/**
- * Bitboard with valid moves
- */
-uint64_t valid_moves;
 
 /**
  * Used by the AI to send its desired move to the wrapper. Also used internally
@@ -31,54 +13,9 @@ typedef struct {
 } coordinate_t;
 
 /**
- * List of moves that are valid in the current boardposition
- */
-coordinate_t* possible_moves;
-/**
- * Number of moves that are valid in the current boardposition
- */
-uint8_t nr_possible_moves;
-
-/**
- * Stores the intermediate result of all pieces that must be flipped when a
- * move is performed
- */
-uint64_t to_flip[8][8] = {{0}};
-
-/**
  * Initializes the default state of Othello
  */
 void init_state(void) {
-	player_b = 0b0000000000000000000000000000100000010000000000000000000000000000;
-	opponent_b = 0b0000000000000000000000000001000000001000000000000000000000000000;
-	valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
-
-	to_flip[2][3] = 0b0000000000000000000000000001000000000000000000000000000000000000;
-	to_flip[3][2] = 0b0000000000000000000000000001000000000000000000000000000000000000;
-	to_flip[4][5] = 0b0000000000000000000000000000000000001000000000000000000000000000;
-	to_flip[5][4] = 0b0000000000000000000000000000000000001000000000000000000000000000;
-
-	nr_possible_moves = 4;
-	// If not enough, extend
-	possible_moves = malloc(20 * sizeof(coordinate_t));
-	possible_moves[0].column = 3;
-	possible_moves[0].row = 2;
-	possible_moves[1].column = 5;
-	possible_moves[1].row = 4;
-	possible_moves[2].column = 4;
-	possible_moves[2].row = 5;
-	possible_moves[3].column = 2;
-	possible_moves[3].row = 3;
-	nr_possible_moves = 4;
-}
-
-/**
- * Swiches the current player with its opponent
- */
-void switch_players(void) {
-	uint64_t temp = player_b;
-	player_b = opponent_b;
-	opponent_b = temp;
 }
 
 /**
@@ -144,7 +81,7 @@ void set_valid_move(uint64_t *valid_moves, uint8_t column, uint8_t row, bool val
  * @param[in] The row
  * @param[in] Wether or not valid moves should be highlighted
  */
-void print_line(uint8_t y, bool show_valid_moves) {
+void print_line(uint64_t player_b, uint64_t opponent_b, uint64_t valid_moves, uint8_t y, bool show_valid_moves) {
 	printf("%" PRIu8 " ", y + 1);
 	for (uint8_t x = 0; x < 8; x++) {
 		printf("\u2502");
@@ -166,13 +103,13 @@ void print_line(uint8_t y, bool show_valid_moves) {
  *
  * @param[in] Wether or not valid moves should be highlighted
  */
-void print_state(bool show_valid_moves) {
+void print_state(uint64_t player_b, uint64_t opponent_b, uint64_t valid_moves, bool show_valid_moves) {
 	// Duplicate horizontal bars because our pieces are double-width
 	printf("\n  \u250C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u2510\n");
-	print_line(0, show_valid_moves);
+	print_line(player_b, opponent_b, valid_moves, 0, show_valid_moves);
 	for (uint8_t y = 1; y < 8; y++) {
 		printf("  \u251C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u2524\n");
-		print_line(y, show_valid_moves);
+	print_line(player_b, opponent_b, valid_moves, y, show_valid_moves);
 	}
 	printf("  \u2514\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2518\n");
 	printf("   a  b  c  d  e  f  g  h\n");
@@ -197,17 +134,17 @@ void flip_neighbours(uint64_t *player_b, uint64_t *opponent_b, uint64_t flip_mas
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-void do_move(uint8_t column, uint8_t row) {
-	if (is_piece(player_b | opponent_b, column, row)) {
+void do_move(uint64_t *player_b, uint64_t *opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
+	if (is_piece(*player_b | *opponent_b, column, row)) {
 		printf("ERROR: Tried to place piece on occupied field\n");
 		exit(EXIT_FAILURE);
 	}
 
 	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
 
-	place_piece(&player_b, column, row);
+	place_piece(player_b, column, row);
 
-	flip_neighbours(&player_b, &opponent_b, to_flip[column][row]);
+	flip_neighbours(player_b, opponent_b, to_flip[column][row]);
 }
 
 /**
@@ -218,7 +155,7 @@ void do_move(uint8_t column, uint8_t row) {
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool valid_any(uint8_t column, uint8_t row) {
+bool valid_any(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
 	bool is_valid = false;
 	to_flip[column][row] = 0;
 
@@ -254,23 +191,23 @@ bool valid_any(uint8_t column, uint8_t row) {
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool is_valid_move(uint8_t column, uint8_t row) {
+bool is_valid_move(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
 	if (is_piece(player_b | opponent_b, column, row))
 		return false;
 
-	return valid_any(column, row);
+	return valid_any(player_b, opponent_b, column, row, to_flip);
 }
 
 /**
  * Updates the valid_move bitboard. By checking for every square if it would
  * be a valid move.
  */
-void update_valid_moves(void) {
-	nr_possible_moves = 0;
+void update_valid_moves(uint64_t player_b, uint64_t opponent_b, uint64_t *valid_moves, uint64_t to_flip[8][8], coordinate_t possible_moves[POSSIBLE_MOVES_MAX]) {
+	uint8_t nr_possible_moves = 0;
 	for (uint8_t column = 0; column < 8; column++) {
 		for (uint8_t row = 0; row < 8; row++) {
-			bool valid = is_valid_move(column, row);
-			set_valid_move(&valid_moves, column, row, valid);
+			bool valid = is_valid_move(player_b, opponent_b, column, row, to_flip);
+			set_valid_move(valid_moves, column, row, valid);
 			if (valid) {
 				possible_moves[nr_possible_moves].column = column;
 				possible_moves[nr_possible_moves].row = row;
@@ -278,12 +215,15 @@ void update_valid_moves(void) {
 			}
 		}
 	}
+	// Indicates the end of the array without having the specify the size
+	possible_moves[nr_possible_moves].column = 8;
+	possible_moves[nr_possible_moves].row = 8;
 }
 
 /**
  * Checks if the current player can perform ANY move.
  */
-bool any_move_valid(void) {
+bool any_move_valid(uint64_t valid_moves) {
 	for (uint8_t column = 0; column <= 7; column++) {
 		for (uint8_t row = 0; row <= 7; row++) {
 			if (is_piece(valid_moves, column, row))
