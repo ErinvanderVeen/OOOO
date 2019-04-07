@@ -1,3 +1,6 @@
+// Might not be enough, update
+#define POSSIBLE_MOVES_MAX 16
+
 #include <inttypes.h>
 #include <locale.h>
 #include <stdbool.h>
@@ -5,7 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "state.h"
+#include "state_t.h"
 #include "ai.h"
 #include "debug.h"
 
@@ -16,16 +19,58 @@ player_t black = Computer;
 
 typedef enum {Black, White} color_t;
 
+/**
+ * List of moves that are valid in the current boardposition
+ */
+coordinate_t* possible_moves;
+/**
+ * Number of moves that are valid in the current boardposition
+ */
+uint8_t nr_possible_moves;
+
+/**
+ * Stores the intermediate result of all pieces that must be flipped when a
+ * move is performed
+ */
+uint64_t to_flip[8][8] = {{0}};
+
 color_t turn = Black;
 
 bool finished = false;
 bool white_skipped = false;
 bool black_skipped = false;
 
+/**
+ * Bitboard of all pieces considered to belong to the current player.
+ * Note, there is no explicit distinction between white/black, as there
+ * is no need for the engine to distinguish between if it is black or white.
+ * All such information should be in the wrapper.
+ */
+uint64_t player_b = 0b0000000000000000000000000000100000010000000000000000000000000000;
+
+/**
+ * Bitboard of all pieces considered to belong to the opposing player
+ */
+uint64_t opponent_b = 0b0000000000000000000000000001000000001000000000000000000000000000;
+
+/**
+ * Bitboard with valid moves
+ */
+uint64_t valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
+
+/**
+ * Swiches the current player with its opponent
+ */
+void switch_players(void) {
+	uint64_t temp = player_b;
+	player_b = opponent_b;
+	opponent_b = temp;
+}
+
 coordinate_t human_turn(void) {
 	coordinate_t choice;
 
-	print_state(true);
+	print_state(player_b, opponent_b, valid_moves, true);
 	printf("Coordinate? ");
 
 	// Read a-h, convert to 0-7
@@ -41,7 +86,7 @@ coordinate_t human_turn(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (!valid_move(choice.column, choice.row)) {
+	if (!is_piece(valid_moves, choice.column, choice.row)) {
 		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", choice.column + 97, choice.row + 1);
 		exit(EXIT_FAILURE);
 	}
@@ -50,7 +95,7 @@ coordinate_t human_turn(void) {
 }
 
 void perform_turn(void) {
-	if (!any_move_valid()) {
+	if (!any_move_valid(valid_moves)) {
 		if (turn == White)
 			white_skipped = true;
 		else
@@ -69,10 +114,13 @@ void perform_turn(void) {
 	if ((turn == White && white == Human) || (turn == Black && black == Human)) {
 		choice = human_turn();
 	} else {
-		choice = ai_turn();
+		uint8_t best_move = ai_turn(player_b, opponent_b);
+		// TODO: See issue #10
+		choice.column = best_move % 8;
+		choice.row = best_move / 8;
 	}
 
-	do_move(choice.column, choice.row);
+	do_move(&player_b, &opponent_b, choice.column, choice.row, to_flip);
 }
 
 int main(void) {
@@ -80,7 +128,20 @@ int main(void) {
 	setlocale(LC_CTYPE, "");
 
 	// Setup game
-	init_state();
+	to_flip[2][3] = 0b0000000000000000000000000001000000000000000000000000000000000000;
+	to_flip[3][2] = 0b0000000000000000000000000001000000000000000000000000000000000000;
+	to_flip[4][5] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	to_flip[5][4] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	possible_moves = malloc(POSSIBLE_MOVES_MAX * sizeof(coordinate_t));
+	possible_moves[0].column = 3;
+	possible_moves[0].row = 2;
+	possible_moves[1].column = 5;
+	possible_moves[1].row = 4;
+	possible_moves[2].column = 4;
+	possible_moves[2].row = 5;
+	possible_moves[3].column = 2;
+	possible_moves[3].row = 3;
+	nr_possible_moves = 4;
 
 	// For the AI
 	srand(time(NULL));
@@ -92,10 +153,10 @@ int main(void) {
 			turn = Black;
 		else
 			turn = White;
-		update_valid_moves();
+		update_valid_moves(player_b, opponent_b, &valid_moves, to_flip, possible_moves);
 	}
 
-	print_state(false);
+	print_state(player_b, opponent_b, valid_moves, false);
 	printf("Game ended, no valid moves.\n");
 
 	return 1;
