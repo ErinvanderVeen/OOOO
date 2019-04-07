@@ -114,7 +114,10 @@ void perform_turn(void) {
 	if ((turn == White && white == Human) || (turn == Black && black == Human)) {
 		choice = human_turn();
 	} else {
-		choice = ai_turn();
+		uint8_t best_move = ai_turn(player_b, opponent_b);
+		// TODO: See issue #10
+		choice.column = best_move % 8;
+		choice.row = best_move / 8;
 	}
 
 	do_move(&player_b, &opponent_b, choice.column, choice.row, to_flip);

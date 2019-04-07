@@ -135,12 +135,12 @@ void flip_neighbours(uint64_t *player_b, uint64_t *opponent_b, uint64_t flip_mas
  * @param[in] The row of the desired location
  */
 void do_move(uint64_t *player_b, uint64_t *opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
+	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
+
 	if (is_piece(*player_b | *opponent_b, column, row)) {
 		printf("ERROR: Tried to place piece on occupied field\n");
 		exit(EXIT_FAILURE);
 	}
-
-	debug_print("Placing piece at: %c%" PRIu8 "\n", column + 97, row + 1);
 
 	place_piece(player_b, column, row);
 
@@ -148,14 +148,16 @@ void do_move(uint64_t *player_b, uint64_t *opponent_b, uint8_t column, uint8_t r
 }
 
 /**
- * Check if a move is valid. As long as there is an opponent piece in the
- * direction currently looked at, we will move one further step in the same
- * direction until either the edge or our own piece is encountered.
+ * Check if the move is a valid move. NOTE: Does not perform a lookup in the
+ * table, but calculates the value itself. Should be used to update the table.
  *
  * @param[in] The column of the desired location
  * @param[in] The row of the desired location
  */
-bool valid_any(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
+bool is_valid_move(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
+	if (is_piece(player_b | opponent_b, column, row))
+		return false;
+
 	bool is_valid = false;
 	to_flip[column][row] = 0;
 
@@ -182,20 +184,6 @@ bool valid_any(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t r
 		}
 	}
 	return is_valid;
-}
-
-/**
- * Check if the move is a valid move. NOTE: Does not perform a lookup in the
- * table, but calculates the value itself. Should be used to update the table.
- *
- * @param[in] The column of the desired location
- * @param[in] The row of the desired location
- */
-bool is_valid_move(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8_t row, uint64_t to_flip[8][8]) {
-	if (is_piece(player_b | opponent_b, column, row))
-		return false;
-
-	return valid_any(player_b, opponent_b, column, row, to_flip);
 }
 
 /**
