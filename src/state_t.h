@@ -29,7 +29,7 @@ bool is_piece(uint64_t board, uint8_t column, uint8_t row) {
 	// TODO: Possible optimization by mirroring the board?
 	uint8_t column_mask = (uint64_t) 1 << (7 - column);
 	uint8_t column_val = board >> ((7 - row) * 8);
-	return (column_mask & column_val) > 0;
+	return (column > 7 || row > 7) ? 0 : (column_mask & column_val) > 0;
 }
 
 /**
@@ -160,27 +160,26 @@ bool is_valid_move(uint64_t player_b, uint64_t opponent_b, uint8_t column, uint8
 
 	bool is_valid = false;
 	to_flip[column][row] = 0;
+	static int8_t offsets[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
 
-	for(int8_t y = -1; y <= 1; y++) {
-		for(int8_t x = -1; x <= 1; x++) {
-			int8_t xx = column + x;
-			int8_t yy = row + y;
-			if((x == 0 && y == 0) || !is_piece(opponent_b, xx, yy))
-				continue;
+	for(uint8_t i = 0; i < 8; i++) {
+		int8_t x = column + offsets[i][0];
+		int8_t y = row + offsets[i][1];
+		if(!is_piece(opponent_b, x, y))
+			continue;
 
-			do {
-				xx += x;
-				yy += y;
-				if (!is_piece(opponent_b, xx, yy))
-					break;
-			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
+		while (x < 8 && x >= 0 && y < 8 && y >= 0){
+			x += offsets[i][0];
+			y += offsets[i][1];
+			if (!is_piece(opponent_b, x, y))
+				break;
+		} 
 
-			if (is_piece(player_b, xx, yy)) {
-				for (; xx != column || yy != row; xx -= x, yy -= y) {
-					to_flip[column][row] |= (uint64_t) 1 << ((7 - xx) + ((7 - yy) * 8));
-				}
-				is_valid = true;
+		if (is_piece(player_b, x, y)) {
+			for (; x != column || y != row; x -= offsets[i][0], y -= offsets[i][1]) {
+				to_flip[column][row] |= (uint64_t) 1 << ((7 - x) + ((7 - y) * 8));
 			}
+			is_valid = true;
 		}
 	}
 	return is_valid;
