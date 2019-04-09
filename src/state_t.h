@@ -212,13 +212,7 @@ void update_valid_moves(uint64_t player_b, uint64_t opponent_b, uint64_t *valid_
  * Checks if the current player can perform ANY move.
  */
 bool any_move_valid(uint64_t valid_moves) {
-	for (uint8_t column = 0; column <= 7; column++) {
-		for (uint8_t row = 0; row <= 7; row++) {
-			if (is_piece(valid_moves, column, row))
-				return true;
-		}
-	}
-	return false;
+	return valid_moves > 0;
 }
 
 #endif
