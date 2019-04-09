@@ -26,10 +26,8 @@ void init_state(void) {
  * @param[in] The row of the desired location
  */
 bool is_piece(uint64_t board, uint8_t column, uint8_t row) {
-	// TODO: Possible optimization by mirroring the board?
-	uint8_t column_mask = (uint64_t) 1 << (7 - column);
-	uint8_t column_val = board >> ((7 - row) * 8);
-	return (column > 7 || row > 7) ? 0 : (column_mask & column_val) > 0;
+	uint64_t mask = (uint64_t) 1 << ((7 - row) * 8 + (7 - column));
+	return (column > 7 || row > 7) ? 0 : board & mask;
 }
 
 /**
@@ -53,8 +51,7 @@ void place_piece(uint64_t *board, uint8_t column, uint8_t row) {
  */
 void remove_piece(uint64_t* board, uint8_t column, uint8_t row) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	mask ^= UINT64_MAX;
-	*board &= mask;
+	*board &= ~mask;
 }
 
 /**
@@ -67,12 +64,10 @@ void remove_piece(uint64_t* board, uint8_t column, uint8_t row) {
  */
 void set_valid_move(uint64_t *valid_moves, uint8_t column, uint8_t row, bool valid) {
 	uint64_t mask = (uint64_t) 1 << (((7 - row) * 8) + (7 - column));
-	if (valid) {
+	if (valid)
 		*valid_moves |= mask;
-	} else {
-		mask ^= UINT64_MAX;
-		*valid_moves &= mask;
-	}
+	else
+		*valid_moves &= ~mask;
 }
 
 /**
@@ -124,7 +119,7 @@ void print_state(uint64_t player_b, uint64_t opponent_b, uint64_t valid_moves, b
  */
 void flip_neighbours(uint64_t *player_b, uint64_t *opponent_b, uint64_t flip_mask) {
 	*player_b |= flip_mask;
-	*opponent_b &= *player_b ^ UINT64_MAX;
+	*opponent_b &= ~(*player_b);
 }
 
 /**
