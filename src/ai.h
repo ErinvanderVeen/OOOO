@@ -44,16 +44,15 @@ double evaluation(uint64_t ai_player_b, uint64_t ai_opponent_b) {
 }
 
 /**
- * minimax
+ * alphabeta
  *
  * TODO: to_flip can be passed to this function such that we don't have to allocate
  */
-double minimax(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, bool maximize) {
+double alphabeta(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, double alpha, double beta, bool maximize) {
 	debug_print("Depth: %" PRIu64 "\n", depth);
 	if (depth == 0)
 		return evaluation(ai_player_b, ai_opponent_b);
 
-	double best_val;
 	uint64_t to_flip[8][8];
 
 	double val;
@@ -62,7 +61,7 @@ double minimax(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, boo
 
 	if (maximize) {
 		next_possible_move(ai_player_b, ai_opponent_b, to_flip, &move);
-		best_val = -INFINITY;
+		val = -INFINITY;
 
 		while (move != 64) {
 			uint64_t new_ai_player_b = ai_player_b;
@@ -71,8 +70,11 @@ double minimax(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, boo
 			// Update board states
 			do_move(&new_ai_player_b, &new_ai_opponent_b, move % 8, move / 8, to_flip);
 
-			if ((val = minimax(new_ai_player_b, new_ai_opponent_b, depth - 1, false)) > best_val)
-				best_val = val;
+			val = fmax(val, alphabeta(new_ai_player_b, new_ai_opponent_b, depth - 1, alpha, beta, false));
+			alpha = fmax(alpha, val);
+
+			if (alpha >= beta)
+				break;
 
 			move++;
 			next_possible_move(ai_player_b, ai_opponent_b, to_flip, &move);
@@ -80,7 +82,7 @@ double minimax(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, boo
 		return val;
 	} else {
 		next_possible_move(ai_opponent_b, ai_player_b, to_flip, &move);
-		best_val = INFINITY;
+		val = INFINITY;
 
 		while (move != 64) {
 			uint64_t new_ai_player_b = ai_player_b;
@@ -89,8 +91,11 @@ double minimax(uint64_t ai_player_b, uint64_t ai_opponent_b, uint64_t depth, boo
 			// Update board states
 			do_move(&new_ai_opponent_b, &new_ai_player_b, move % 8, move / 8, to_flip);
 
-			if ((val = minimax(new_ai_player_b, new_ai_opponent_b, depth - 1, true)) < best_val)
-				best_val = val;
+			val = fmin(val, alphabeta(new_ai_player_b, new_ai_opponent_b, depth - 1, alpha, beta, true));
+			beta = fmin(beta, val);
+
+			if (alpha > beta)
+				break;
 
 			move++;
 			next_possible_move(ai_opponent_b, ai_player_b, to_flip, &move);
@@ -119,8 +124,8 @@ uint8_t ai_turn(uint64_t ai_player_b, uint64_t ai_opponent_b) {
 		// Update board states
 		do_move(&new_ai_player_b, &new_ai_opponent_b, move % 8, move / 8, to_flip);
 
-		// Perform minimax on all children
-		if ((val = minimax(new_ai_player_b, new_ai_opponent_b, 5, false)) > best_val) {
+		// Perform alphabeta on all children
+		if ((val = alphabeta(new_ai_player_b, new_ai_opponent_b, 8, -INFINITY, INFINITY, false)) > best_val) {
 			best_move = move;
 			best_val = val;
 		}
