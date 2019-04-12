@@ -41,17 +41,12 @@ bool white_skipped = false;
 bool black_skipped = false;
 
 /**
- * Bitboard of all pieces considered to belong to the current player.
- * Note, there is no explicit distinction between white/black, as there
- * is no need for the engine to distinguish between if it is black or white.
- * All such information should be in the wrapper.
+ * Bitboard of all pieces considered to belong to the current and opponent player.
  */
-uint64_t player_b = 0b0000000000000000000000000000100000010000000000000000000000000000;
-
-/**
- * Bitboard of all pieces considered to belong to the opposing player
- */
-uint64_t opponent_b = 0b0000000000000000000000000001000000001000000000000000000000000000;
+board_t board = {
+	.player = 0b0000000000000000000000000000100000010000000000000000000000000000,
+	.opponent = 0b0000000000000000000000000001000000001000000000000000000000000000
+};
 
 /**
  * Bitboard with valid moves
@@ -62,15 +57,15 @@ uint64_t valid_moves = 0b0000000000000000000100000010000000000100000010000000000
  * Swiches the current player with its opponent
  */
 void switch_players(void) {
-	uint64_t temp = player_b;
-	player_b = opponent_b;
-	opponent_b = temp;
+	uint64_t temp = board.player;
+	board.player = board.opponent;
+	board.opponent = temp;
 }
 
 coordinate_t human_turn(void) {
 	coordinate_t choice;
 
-	print_state(player_b, opponent_b, valid_moves, true);
+	print_state(board, valid_moves, true);
 	printf("Coordinate? ");
 
 	// Read a-h, convert to 0-7
@@ -114,13 +109,13 @@ void perform_turn(void) {
 	if ((turn == White && white == Human) || (turn == Black && black == Human)) {
 		choice = human_turn();
 	} else {
-		uint8_t best_move = ai_turn(player_b, opponent_b);
+		uint8_t best_move = ai_turn(board);
 		// TODO: See issue #10
 		choice.column = best_move % 8;
 		choice.row = best_move / 8;
 	}
 
-	do_move(&player_b, &opponent_b, choice.column, choice.row, to_flip);
+	do_move(&board, choice.column, choice.row, to_flip);
 }
 
 int main(void) {
@@ -153,10 +148,10 @@ int main(void) {
 			turn = Black;
 		else
 			turn = White;
-		update_valid_moves(player_b, opponent_b, &valid_moves, to_flip, possible_moves);
+		update_valid_moves(board, &valid_moves, to_flip, possible_moves);
 	}
 
-	print_state(player_b, opponent_b, valid_moves, false);
+	print_state(board, valid_moves, false);
 	printf("Game ended, no valid moves.\n");
 
 	return 1;
