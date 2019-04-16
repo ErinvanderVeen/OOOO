@@ -24,10 +24,10 @@ uint8_t count_pieces(uint64_t board) {
  *
  * @param[in,out] The coordinate of a valid move (0 - 63) or 64 in case no more valid moves exist
  */
-void next_possible_move(board_t board, uint64_t to_flip[8][8], uint8_t *coordinate) {
+void next_possible_move(board_t board, uint64_t to_flip[64], uint8_t *coordinate) {
 	while (*coordinate < 64) {
 		//TODO: Replace column, row with a single coordinate. Related to issue #10
-		if (is_valid_move(board, *coordinate % 8, *coordinate / 8, to_flip)) {
+		if (is_valid_move(board, *coordinate, to_flip)) {
 			return;
 		}
 		(*coordinate)++;
@@ -53,7 +53,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 	if (depth == 0)
 		return evaluation(board);
 
-	uint64_t to_flip[8][8];
+	uint64_t to_flip[64];
 
 	double val;
 
@@ -70,7 +70,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 			};
 
 			// Update board states
-			do_move(&board, move % 8, move / 8, to_flip);
+			do_move(&board, move, to_flip);
 
 			val = fmax(val, alphabeta(new_board, depth - 1, alpha, beta, false));
 			alpha = fmax(alpha, val);
@@ -93,7 +93,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 			};
 
 			// Update board states
-			do_move(&board, move % 8, move / 8, to_flip);
+			do_move(&board, move, to_flip);
 
 			val = fmin(val, alphabeta(new_board, depth - 1, alpha, beta, true));
 			beta = fmin(beta, val);
@@ -109,7 +109,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 }
 
 uint8_t ai_turn(board_t board) {
-	uint64_t to_flip[8][8];
+	uint64_t to_flip[64];
 	uint8_t best_move = 0;
 	double best_val = -INFINITY;
 
@@ -128,7 +128,7 @@ uint8_t ai_turn(board_t board) {
 		};
 
 		// Update board states
-		do_move(&board, move % 8, move / 8, to_flip);
+		do_move(&board, move, to_flip);
 
 		// Perform alphabeta on all children
 		if ((val = alphabeta(new_board, 8, -INFINITY, INFINITY, false)) > best_val) {
