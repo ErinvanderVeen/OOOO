@@ -8,6 +8,10 @@
 #include "debug.h"
 #include "state_t.h"
 
+#ifdef PERFORMANCE
+extern uint64_t nodes_explored;
+#endif
+
 uint8_t count_pieces(uint64_t board) {
 	uint8_t count = 0;
 	while (board) {
@@ -58,6 +62,10 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 	double val;
 
 	uint8_t move = 0;
+
+#ifdef PERFORMANCE
+	nodes_explored++;
+#endif
 
 	if (maximize) {
 		next_possible_move(board, to_flip, &move);
