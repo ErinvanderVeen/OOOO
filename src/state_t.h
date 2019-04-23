@@ -7,6 +7,25 @@
 
 /**
  * Holds the most common way the board state is represented
+ * Note the bottom right square is the least significant bit
+ *   ┌──┬──┬──┬──┬──┬──┬──┬──┐
+ * 1 │63│62│61│60│59│58│57│56│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 2 │55│54│53│52│51│50│49│48│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 3 │47│46│45│44│43│42│41│40│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 4 │39│38│37│36│35│34│33│32│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 5 │31│30│29│28│27│26│25│24│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 6 │23│22│21│20│19│18│17│16│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 7 │15│14│13│12│11│10│ 9│ 8│
+ *   ├──┼──┼──┼──┼──┼──┼──┼──┤
+ * 8 │ 7│ 6│ 5│ 4│ 3│ 2│ 1│ 0│
+ *   └──┴──┴──┴──┴──┴──┴──┴──┘
+ *    a  b  c  d  e  f  g  h
  */
 typedef struct {
 	uint64_t player;
@@ -43,8 +62,7 @@ void place_piece(uint64_t *board, uint8_t coordinate) {
  */
 void remove_piece(uint64_t* board, uint8_t coordinate) {
 	uint64_t mask = LEFT_MOST_BIT >> coordinate;
-	mask ^= UINT64_MAX;
-	*board &= mask;
+	*board &= ~mask;
 }
 
 /**
@@ -56,12 +74,10 @@ void remove_piece(uint64_t* board, uint8_t coordinate) {
  */
 void set_valid_move(uint64_t *valid_moves, uint8_t coordinate, bool valid) {
 	uint64_t mask = LEFT_MOST_BIT >> coordinate;
-	if (valid) {
+	if (valid)
 		*valid_moves |= mask;
-	} else {
-		mask ^= UINT64_MAX;
-		*valid_moves &= mask;
-	}
+	else
+		*valid_moves &= ~mask;
 }
 
 /**
@@ -114,7 +130,7 @@ void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
  */
 void flip_neighbours(board_t *board, uint64_t flip_mask) {
 	board->player |= flip_mask;
-	board->opponent &= board->player ^ UINT64_MAX;
+	board->opponent &= ~board->player;
 }
 
 /**
@@ -147,38 +163,33 @@ void do_move(board_t *board, uint8_t coordinate, uint64_t to_flip[64]) {
  * @param[out] Contains the pieces that should be flipped when this move turns out to be valid
  */
 bool is_valid_move(board_t board, uint8_t coordinate, uint64_t to_flip[64]) {
+	uint8_t row = coordinate / 8;
+	uint8_t column = coordinate % 8;
 	if (is_piece(board.player | board.opponent, coordinate))
 		return false;
 
 	bool is_valid = false;
 	to_flip[coordinate] = 0;
+	static int8_t offsets[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
 
-	uint8_t column = coordinate % 8;
-	uint8_t row = coordinate / 8;
+	for(uint8_t i = 0; i < 8; i++) {
+		int8_t x = column + offsets[i][0];
+		int8_t y = row + offsets[i][1];
+		if(!is_piece(board.opponent, y * 8 + x))
+			continue;
 
-	for(int8_t y = -1; y <= 1; y++) {
-		for(int8_t x = -1; x <= 1; x++) {
-			int8_t xx = column + x;
-			int8_t yy = row + y;
-			uint8_t coordinate = yy * 8 + xx;
-			if((x == 0 && y == 0) || !is_piece(board.opponent, coordinate))
-				continue;
+		while (x < 8 && x >= 0 && y < 8 && y >= 0){
+			x += offsets[i][0];
+			y += offsets[i][1];
+			if (!is_piece(board.opponent,  y * 8 + x))
+				break;
+		} 
 
-			do {
-				xx += x;
-				yy += y;
-				coordinate = yy * 8 + xx;
-				if (!is_piece(board.opponent, coordinate))
-					break;
-			} while (xx < 8 && xx >= 0 && yy < 8 && yy >= 0);
-
-			if (is_piece(board.player, coordinate)) {
-				for (; xx != column || yy != row; xx -= x, yy -= y) {
-					coordinate = yy * 8 + xx;
-					to_flip[coordinate] |= LEFT_MOST_BIT >> coordinate;
-				}
-				is_valid = true;
+		if (is_piece(board.player, y * 8 + x)) {
+			for (; x != column || y != row; x -= offsets[i][0], y -= offsets[i][1]) {
+				to_flip[coordinate] |= (uint64_t) 1 << ((7 - x) + ((7 - y) * 8));
 			}
+			is_valid = true;
 		}
 	}
 	return is_valid;
@@ -206,7 +217,7 @@ void update_valid_moves(board_t board, uint64_t *valid_moves, uint64_t to_flip[6
  * Checks if the current player can perform ANY move.
  */
 bool any_move_valid(uint64_t valid_moves) {
-	return valid_moves != 0;
+	return valid_moves > 0;
 }
 
 #endif

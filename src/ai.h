@@ -9,12 +9,7 @@
 #include "state_t.h"
 
 uint8_t count_pieces(uint64_t board) {
-	uint8_t count = 0;
-	while (board) {
-		count += board & 1;
-		board >>= 1;
-	}
-	return count;
+	return __builtin_popcountll(board);
 }
 
 /**
