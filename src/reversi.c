@@ -14,19 +14,10 @@
 
 typedef enum {Human, Computer} player_t;
 
-player_t white = Human;
+player_t white = Computer;
 player_t black = Computer;
 
 typedef enum {Black, White} color_t;
-
-/**
- * List of moves that are valid in the current boardposition
- */
-uint8_t* possible_moves;
-/**
- * Number of moves that are valid in the current boardposition
- */
-uint8_t nr_possible_moves;
 
 /**
  * Stores the intermediate result of all pieces that must be flipped when a
@@ -51,7 +42,7 @@ board_t board = {
 /**
  * Bitboard with valid moves
  */
-uint64_t valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
+static uint64_t valid_moves = 0b0000000000000000000100000010000000000100000010000000000000000000;
 
 /**
  * Swiches the current player with its opponent
@@ -112,7 +103,7 @@ void perform_turn(void) {
 		choice = ai_turn(board);
 	}
 
-	do_move(&board, choice, to_flip);
+	do_move(&board, choice);
 }
 
 int main(void) {
@@ -124,13 +115,6 @@ int main(void) {
 	to_flip[26] = 0b0000000000000000000000000000000000001000000000000000000000000000;
 	to_flip[37] = 0b0000000000000000000000000001000000000000000000000000000000000000;
 	to_flip[44] = 0b0000000000000000000000000001000000000000000000000000000000000000;
-	possible_moves = malloc(POSSIBLE_MOVES_MAX * sizeof(possible_moves[0]));
-
-	possible_moves[0] = 19;
-	possible_moves[1] = 26;
-	possible_moves[2] = 37;
-	possible_moves[3] = 44;
-	nr_possible_moves = 4;
 
 	// For the AI
 	srand(time(NULL));
@@ -142,11 +126,30 @@ int main(void) {
 			turn = Black;
 		else
 			turn = White;
-		update_valid_moves(board, &valid_moves, to_flip, possible_moves);
+		valid_moves = get_valid_moves(board);
 	}
 
 	print_state(board, valid_moves, false);
 	printf("Game ended, no valid moves.\n");
+
+	uint64_t white_pieces;
+	uint64_t black_pieces;
+	if (turn == White) {
+		white_pieces = count_pieces(board.player);
+		black_pieces = count_pieces(board.opponent);
+	} else {
+		white_pieces = count_pieces(board.opponent);
+		black_pieces = count_pieces(board.player);
+	}
+
+	printf("Final Score:\n");
+	printf("White: %" PRIu64 "\n", white_pieces);
+	printf("Black: %" PRIu64 "\n", black_pieces);
+
+	if (white_pieces > black_pieces)
+		printf("WHITE WON\n");
+	else
+		printf("BLACK WON\n");
 
 	return 1;
 }

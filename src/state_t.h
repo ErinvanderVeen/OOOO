@@ -32,6 +32,17 @@ typedef struct {
 	uint64_t opponent;
 } board_t;
 
+typedef enum {
+	Up = 0,
+	UpRight = 1,
+	Right = 2,
+	DownRight = 3,
+	Down = 4,
+	DownLeft = 5,
+	Left = 6,
+	UpLeft= 7
+} direction_t;
+
 /**
  * Checks if the specified board has a piece in the specified location
  *
@@ -66,18 +77,101 @@ void remove_piece(uint64_t* board, uint8_t coordinate) {
 }
 
 /**
- * Sets a value of the valid_move bitboard.
- *
- * @param[out] The bitboard with the valid moves
- * @param[in] The coordinate of the desired location
- * @param[in] Wether the move would be valid/invalid.
+ * Counts the number of pieces on the specified board
  */
-void set_valid_move(uint64_t *valid_moves, uint8_t coordinate, bool valid) {
-	uint64_t mask = ONE << coordinate;
-	if (valid)
-		*valid_moves |= mask;
-	else
-		*valid_moves &= ~mask;
+uint8_t count_pieces(uint64_t board) {
+	return __builtin_popcountll(board);
+}
+
+/**
+ * Shift board in a certain direction
+ *
+ * @param The board
+ * @param The direction
+ *
+ * Based on https://www.hanshq.net/othello.html however, with some things
+ * changed. Including one bug-fix.
+ */
+static uint64_t shift(uint64_t board, direction_t direction) {
+	// The direction refers to the direction we shift in. Not to the amount
+	// of places that are supposed to be shifted.
+	// Clockwise
+	// 0: Up
+	// 1: Up-right
+	// 2: Right
+	// 3: Down-right
+	// 4: Down
+	// 5: Down-left
+	// 6: Left
+	// 7: Up-left
+	static const uint64_t MASKS[] = {
+		0xFFFFFFFFFFFFFFFFULL, /* Up. */
+		0x7F7F7F7F7F7F7F00ULL, /* Up-right. */
+		0x7F7F7F7F7F7F7F7FULL, /* Right. */
+		0x007F7F7F7F7F7F7FULL, /* Down-right. */
+		0xFFFFFFFFFFFFFFFFULL, /* Down. */
+		0x00FEFEFEFEFEFEFEULL, /* Down-left. */
+		0xFEFEFEFEFEFEFEFEULL, /* Left. */
+		0xFEFEFEFEFEFEFE00ULL /* Up-left. */
+	};
+	static const uint64_t LSHIFTS[] = {
+		8, /* Up. */
+		7, /* Up-right. */
+		0, /* Right. */
+		0, /* Down-right. */
+		0, /* Down. */
+		0, /* Down-left. */
+		1, /* Left. */
+		9  /* Up-left. */
+	};
+	static const uint64_t RSHIFTS[] = {
+		0, /* Up. */
+		0, /* Up-right. */
+		1, /* Right. */
+		9, /* Down-right. */
+		8, /* Down. */
+		7, /* Down-left. */
+		0, /* Left. */
+		0  /* Up-left. */
+	};
+
+	// Let's not waste calculations, shifts with 0 are id anyway
+	board >>= RSHIFTS[direction];
+	board <<= LSHIFTS[direction];
+	board &= MASKS[direction];
+	return board;
+}
+
+/**
+ * Generate all valid moves
+ *
+ * @param The board
+ *
+ * Based on https://www.hanshq.net/othello.html however, with some things
+ * changed.
+ */
+static uint64_t get_valid_moves(board_t board)
+{
+	uint64_t t_board;
+	uint64_t empty_cells = ~(board.player | board.opponent);
+	uint64_t legal_moves = 0;
+
+	for (direction_t d = Up; d != UpLeft; d++) {
+		/* Get opponent disks adjacent to my disks in direction dir. */
+		t_board = shift(board.player, d) & board.opponent;
+
+		/* Add opponent disks adjacent to those, and so on. */
+		t_board |= shift(t_board, d) & board.opponent;
+		t_board |= shift(t_board, d) & board.opponent;
+		t_board |= shift(t_board, d) & board.opponent;
+		t_board |= shift(t_board, d) & board.opponent;
+		t_board |= shift(t_board, d) & board.opponent;
+
+		/* Empty cells adjacent to those are valid moves. */
+		legal_moves |= shift(t_board, d) & empty_cells;
+	}
+
+	return legal_moves;
 }
 
 /**
@@ -108,15 +202,24 @@ void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
 }
 
 /**
- * Flips pieces on the board given the instruction on what pieces to flip
- *
- * @param[in,out] The player board
- * @param[in,out] The opponents board
- * @param[in] The mask of the pieces to be flipped
+ * Print a graphical representation of a board
  */
-void flip_neighbours(board_t *board, uint64_t flip_mask) {
-	board->player |= flip_mask;
-	board->opponent &= ~board->player;
+void print_board(uint64_t board) {
+	// Duplicate horizontal bars because our pieces are double-width
+	for (int8_t y = 63; y >= 0; y -= 8) {
+		printf("  -----------------\n");
+		printf("%" PRIu8 " ", (7 - (y / 8)) + 1);
+		for (int8_t x = y; x >= y - 7; x--) {
+			printf("|");
+			if (is_piece(board, x)) {
+				printf("*");
+			} else {
+				printf(" ");
+			}
+		}
+		printf("|\n");
+	}
+	printf("   a b c d e f g h\n");
 }
 
 /**
@@ -127,7 +230,7 @@ void flip_neighbours(board_t *board, uint64_t flip_mask) {
  * @param[in] The coordinate of the desired location
  * @param[in] What should happen when the move is made
  */
-void do_move(board_t *board, uint8_t coordinate, uint64_t to_flip[64]) {
+void do_move(board_t *board, uint8_t coordinate) {
 	debug_print("Placing piece at: %" PRIu8 "\n", coordinate);
 
 	if (is_piece(board->player | board->opponent, coordinate)) {
@@ -135,68 +238,30 @@ void do_move(board_t *board, uint8_t coordinate, uint64_t to_flip[64]) {
 		exit(EXIT_FAILURE);
 	}
 
+	uint64_t x, bounding_disk;
+	uint64_t new_disk = 1ULL << coordinate;
+	uint64_t captured_disks = 0;
+
 	place_piece(&board->player, coordinate);
 
-	flip_neighbours(board, to_flip[coordinate]);
-}
+	for (direction_t d = Up; d != UpLeft; d++) {
+		/* Find opponent disk adjacent to the new disk. */
+		x = shift(new_disk, d) & board->opponent;
 
-/**
- * Check if the move is a valid move. NOTE: Does not perform a lookup in the
- * table, but calculates the value itself. Should be used to update the table.
- *
- * @param[in] The board on which we should check the validity
- * @param[in] The coordinate of the desired location
- * @param[out] Contains the pieces that should be flipped when this move turns out to be valid
- */
-bool is_valid_move(board_t board, uint8_t coordinate, uint64_t to_flip[64]) {
-	uint8_t row = coordinate / 8;
-	uint8_t column = coordinate % 8;
-	if (is_piece(board.player | board.opponent, coordinate))
-		return false;
+		/* Add any adjacent opponent disk to that one, and so on. */
+		x |= shift(x, d) & board->opponent;
+		x |= shift(x, d) & board->opponent;
+		x |= shift(x, d) & board->opponent;
+		x |= shift(x, d) & board->opponent;
+		x |= shift(x, d) & board->opponent;
 
-	bool is_valid = false;
-	to_flip[coordinate] = 0;
-	static int8_t offsets[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
-
-	for(uint8_t i = 0; i < 8; i++) {
-		int8_t x = column + offsets[i][0];
-		int8_t y = row + offsets[i][1];
-		if(!is_piece(board.opponent, y * 8 + x))
-			continue;
-
-		while (x < 8 && x >= 0 && y < 8 && y >= 0){
-			x += offsets[i][0];
-			y += offsets[i][1];
-			if (!is_piece(board.opponent,  y * 8 + x))
-				break;
-		} 
-
-		if (is_piece(board.player, y * 8 + x)) {
-			for (; x != column || y != row; x -= offsets[i][0], y -= offsets[i][1]) {
-				to_flip[coordinate] |= (uint64_t) 1 << ((7 - x) + ((7 - y) * 8));
-			}
-			is_valid = true;
-		}
+		/* Determine whether the disks were captured. */
+		bounding_disk = shift(x, d) & board->player;
+		captured_disks |= (bounding_disk ? x : 0);
 	}
-	return is_valid;
-}
 
-/**
- * Updates the valid_move bitboard. By checking for every square if it would
- * be a valid move.
- */
-void update_valid_moves(board_t board, uint64_t *valid_moves, uint64_t to_flip[64], uint8_t possible_moves[POSSIBLE_MOVES_MAX]) {
-	uint8_t nr_possible_moves = 0;
-	for (uint8_t coordinate = 0; coordinate < 64; coordinate++) {
-		bool valid = is_valid_move(board, coordinate, to_flip);
-		set_valid_move(valid_moves, coordinate, valid);
-		if (valid) {
-			possible_moves[nr_possible_moves] = coordinate;
-			nr_possible_moves++;
-		}
-	}
-	// Indicates the end of the array without having the specify the size
-	possible_moves[nr_possible_moves] = 64;
+	board->player ^= captured_disks;
+	board->opponent ^= captured_disks;
 }
 
 /**
