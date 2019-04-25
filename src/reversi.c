@@ -82,7 +82,7 @@ uint8_t human_turn(void) {
 	uint8_t coordinate = choice_column + choice_row * 8;
 
 	if (!is_piece(valid_moves, coordinate)) {
-		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", choice_column + 97, choice_row + 1);
+		printf("ERROR: Invalid location for piece: %c%" PRIu8 "\n", 7 - choice_column + 97, 7 - choice_row + 1);
 		exit(EXIT_FAILURE);
 	}
 
