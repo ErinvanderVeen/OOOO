@@ -8,15 +8,6 @@
 #include "debug.h"
 #include "state_t.h"
 
-uint8_t count_pieces(uint64_t board) {
-	uint8_t count = 0;
-	while (board) {
-		count += board & 1;
-		board >>= 1;
-	}
-	return count;
-}
-
 /**
  * @param[in] The Player board
  * @param[in] The Opponent board
@@ -24,10 +15,10 @@ uint8_t count_pieces(uint64_t board) {
  *
  * @param[in,out] The coordinate of a valid move (0 - 63) or 64 in case no more valid moves exist
  */
-void next_possible_move(board_t board, uint64_t to_flip[64], uint8_t *coordinate) {
+void next_possible_move(uint8_t *coordinate, uint64_t ai_valid_moves) {
 	while (*coordinate < 64) {
 		//TODO: Replace column, row with a single coordinate. Related to issue #10
-		if (is_valid_move(board, *coordinate, to_flip)) {
+		if (is_piece(ai_valid_moves, *coordinate)) {
 			return;
 		}
 		(*coordinate)++;
@@ -45,22 +36,19 @@ double evaluation(board_t board) {
 
 /**
  * alphabeta
- *
- * TODO: to_flip can be passed to this function such that we don't have to allocate
  */
 double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool maximize) {
 	debug_print("Depth: %" PRIu64 "\n", depth);
 	if (depth == 0)
 		return evaluation(board);
 
-	uint64_t to_flip[64];
-
 	double val;
 
 	uint8_t move = 0;
+	uint64_t ai_valid_moves = get_valid_moves(board);
 
 	if (maximize) {
-		next_possible_move(board, to_flip, &move);
+		next_possible_move(&move, ai_valid_moves);
 		val = -INFINITY;
 
 		while (move != 64) {
@@ -70,7 +58,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 			};
 
 			// Update board states
-			do_move(&board, move, to_flip);
+			do_move(&board, move);
 
 			val = fmax(val, alphabeta(new_board, depth - 1, alpha, beta, false));
 			alpha = fmax(alpha, val);
@@ -79,11 +67,11 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 				break;
 
 			move++;
-			next_possible_move(board, to_flip, &move);
+			next_possible_move(&move, ai_valid_moves);
 		}
 		return val;
 	} else {
-		next_possible_move(board, to_flip, &move);
+		next_possible_move(&move, ai_valid_moves);
 		val = INFINITY;
 
 		while (move != 64) {
@@ -93,7 +81,7 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 			};
 
 			// Update board states
-			do_move(&board, move, to_flip);
+			do_move(&board, move);
 
 			val = fmin(val, alphabeta(new_board, depth - 1, alpha, beta, true));
 			beta = fmin(beta, val);
@@ -102,21 +90,22 @@ double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool 
 				break;
 
 			move++;
-			next_possible_move(board, to_flip, &move);
+			next_possible_move(&move, ai_valid_moves);
 		}
 		return val;
 	}
 }
 
 uint8_t ai_turn(board_t board) {
-	uint64_t to_flip[64];
 	uint8_t best_move = 0;
 	double best_val = -INFINITY;
 
 	uint8_t move = 0;
 	double val;
 
-	next_possible_move(board, to_flip, &move);
+	uint64_t ai_valid_moves = get_valid_moves(board);
+
+	next_possible_move(&move, ai_valid_moves);
 
 	while (move != 64) {
 
@@ -128,16 +117,16 @@ uint8_t ai_turn(board_t board) {
 		};
 
 		// Update board states
-		do_move(&board, move, to_flip);
+		do_move(&board, move);
 
 		// Perform alphabeta on all children
-		if ((val = alphabeta(new_board, 8, -INFINITY, INFINITY, false)) > best_val) {
+		if ((val = alphabeta(new_board, 20, -INFINITY, INFINITY, false)) > best_val) {
 			best_move = move;
 			best_val = val;
 		}
 
 		move++;
-		next_possible_move(board, to_flip, &move);
+		next_possible_move(&move, ai_valid_moves);
 	}
 
 	return best_move;

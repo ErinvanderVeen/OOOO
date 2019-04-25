@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -march=native
 
 all: reversi.c state_t.h ai.h
 	$(CC) $(CFLAGS) -Ofast reversi.c -o reversi.out
