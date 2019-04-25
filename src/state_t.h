@@ -81,44 +81,30 @@ void set_valid_move(uint64_t *valid_moves, uint8_t coordinate, bool valid) {
 }
 
 /**
- * Print a graphical representation of a row in the field.
- *
- * @param[in] The row
- * @param[in] Wether or not valid moves should be highlighted
- */
-void print_line(board_t board, uint64_t valid_moves, uint8_t y, bool show_valid_moves) {
-	printf("%" PRIu8 " ", y + 1);
-	for (uint8_t x = 0; x < 8; x++) {
-		uint8_t coordinate = y * 8 + x;
-		printf("\u2502");
-		if (is_piece(board.player, coordinate)) {
-			printf("\u26AA");
-		} else if (is_piece(board.opponent, coordinate)) {
-			printf("\u26AB");
-		} else if (is_piece(valid_moves, coordinate) && show_valid_moves) {
-			printf("\u25A1 ");
-		} else {
-			printf("  ");
-		}
-	}
-	printf("\u2502\n");
-}
-
-/**
  * Print a graphical representation of the entire field
  *
  * @param[in] Wether or not valid moves should be highlighted
  */
 void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
 	// Duplicate horizontal bars because our pieces are double-width
-	printf("\n  \u250C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u252C\u2500\u2500\u2510\n");
-	print_line(board, valid_moves, 0, show_valid_moves);
-	for (uint8_t y = 1; y < 8; y++) {
-		printf("  \u251C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u253C\u2500\u2500\u2524\n");
-	print_line(board, valid_moves, y, show_valid_moves);
+	for (int8_t y = 63; y >= 0; y -= 8) {
+		printf("  -----------------\n");
+		printf("%" PRIu8 " ", (7 - (y / 8)) + 1);
+		for (int8_t x = y; x >= y - 7; x--) {
+			printf("|");
+			if (is_piece(board.player, x)) {
+				printf("P");
+			} else if (is_piece(board.opponent, x)) {
+				printf("o");
+			} else if (is_piece(valid_moves, x) && show_valid_moves) {
+				printf("*");
+			} else {
+				printf(" ");
+			}
+		}
+		printf("|\n");
 	}
-	printf("  \u2514\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2534\u2500\u2500\u2518\n");
-	printf("   a  b  c  d  e  f  g  h\n");
+	printf("   a b c d e f g h\n");
 }
 
 /**
