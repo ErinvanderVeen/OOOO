@@ -67,8 +67,8 @@ uint8_t human_turn(void) {
 	printf("Coordinate? ");
 
 	// Read a-h, convert to 0-7
-	uint8_t choice_column = (uint8_t) getchar() - 97;
-	uint8_t choice_row = (uint8_t) getchar() - 49;
+	uint8_t choice_column = 7 - ((uint8_t) getchar() - 97);
+	uint8_t choice_row = 7 - ((uint8_t) getchar() - 49);
 	// Skip over \n
 	getchar();
 
@@ -120,13 +120,12 @@ int main(void) {
 	setlocale(LC_CTYPE, "");
 
 	// Setup game
-	to_flip[19] = 0b0000000000000000000000000001000000000000000000000000000000000000;
-	to_flip[26] = 0b0000000000000000000000000001000000000000000000000000000000000000;
-	to_flip[37] = 0b0000000000000000000000000000000000001000000000000000000000000000;
-	to_flip[44] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	to_flip[19] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	to_flip[26] = 0b0000000000000000000000000000000000001000000000000000000000000000;
+	to_flip[37] = 0b0000000000000000000000000001000000000000000000000000000000000000;
+	to_flip[44] = 0b0000000000000000000000000001000000000000000000000000000000000000;
 	possible_moves = malloc(POSSIBLE_MOVES_MAX * sizeof(possible_moves[0]));
 
-	// Format stored by numbering field from top right to bottom left
 	possible_moves[0] = 19;
 	possible_moves[1] = 26;
 	possible_moves[2] = 37;

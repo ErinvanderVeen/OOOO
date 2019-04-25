@@ -1,7 +1,7 @@
 #ifndef STATE_T_H
 #define STATE_T_H
 
-#define LEFT_MOST_BIT 0x8000000000000000
+#define ONE (uint64_t) 1
 
 #include "debug.h"
 
@@ -39,7 +39,7 @@ typedef struct {
  * @param[in] The coordinate of the desired location
  */
 bool is_piece(uint64_t board, uint8_t coordinate) {
-	uint64_t mask = LEFT_MOST_BIT >> coordinate;
+	uint64_t mask = ONE << coordinate;
 	return (board & mask) > 0;
 }
 
@@ -50,7 +50,7 @@ bool is_piece(uint64_t board, uint8_t coordinate) {
  * @param[in] The coordinate of the desired location
  */
 void place_piece(uint64_t *board, uint8_t coordinate) {
-	uint64_t mask = LEFT_MOST_BIT >> coordinate;
+	uint64_t mask = ONE << coordinate;
 	*board |= mask;
 }
 
@@ -61,7 +61,7 @@ void place_piece(uint64_t *board, uint8_t coordinate) {
  * @param[in] The coordinate of the desired location
  */
 void remove_piece(uint64_t* board, uint8_t coordinate) {
-	uint64_t mask = LEFT_MOST_BIT >> coordinate;
+	uint64_t mask = ONE << coordinate;
 	*board &= ~mask;
 }
 
@@ -73,7 +73,7 @@ void remove_piece(uint64_t* board, uint8_t coordinate) {
  * @param[in] Wether the move would be valid/invalid.
  */
 void set_valid_move(uint64_t *valid_moves, uint8_t coordinate, bool valid) {
-	uint64_t mask = LEFT_MOST_BIT >> coordinate;
+	uint64_t mask = ONE << coordinate;
 	if (valid)
 		*valid_moves |= mask;
 	else
