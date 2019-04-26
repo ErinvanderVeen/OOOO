@@ -4,7 +4,6 @@
 #include <inttypes.h>
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "state_t.h"
 
@@ -57,7 +56,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int pla
             board_t new_board = {.player = board.player, .opponent = board.opponent};
             do_move(&new_board, i);
 
-            // Must switch since it is time for the other player to make a move
+            // We want the perspective of the other player in the recursive call
             switch_boards(&new_board);
 
             value = fmax(value, -negamax(new_board, depth - 1, -beta, -alpha, -player));
@@ -71,19 +70,14 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int pla
 }
 
 uint8_t ai_turn(board_t board) {
-    uint8_t best_move = 0;
+    int8_t best_move = -1;
     double best_value = 0;
     uint64_t valid = get_valid_moves(board);
 
-    // Negamax will, for some reason, fail sometimes. With this loop, we will both get a "constant" return when only
-    // one move is possible, but also cover the case where negamax fails. Not expensive since the upper-bound for
-    // invocations of this function (ai_turn) is 64.
-    for (uint8_t i = 0; i < 64; ++i) {
-        if (is_set(valid, i)) {
-            best_move = i;
-            if (count(valid) == 1)
-                return best_move;
-            break;
+    if (count(valid) == 1) {
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (is_set(valid, i))
+                return i;
         }
     }
 
@@ -101,6 +95,15 @@ uint8_t ai_turn(board_t board) {
                     best_value = value;
                     best_move = i;
                 }
+            }
+        }
+    }
+
+    if (best_move == -1) {
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (is_set(valid, i)) {
+                best_move = i;
+                break;
             }
         }
     }
