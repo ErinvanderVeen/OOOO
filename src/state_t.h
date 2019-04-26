@@ -3,8 +3,16 @@
 
 #include "debug.h"
 
-typedef enum {E = 0, SE, S, SW, W, NW, N, NE} dir_t;
-
+typedef enum {
+    Up = 0,
+    UpRight = 1,
+    Right = 2,
+    DownRight = 3,
+    Down = 4,
+    DownLeft = 5,
+    Left = 6,
+    UpLeft = 7
+} direction_t;
 /**
  * Holds the most common way the board state is represented
  * Note the bottom right square is the least significant bit
@@ -58,7 +66,7 @@ void set(uint64_t *number, uint8_t n) {
  * @param[in,out] The board of which the piece must be removed
  * @param[in] The coordinate of the desired location
  */
-void clear(uint64_t* number, uint8_t n) {
+void clear(uint64_t *number, uint8_t n) {
     *number &= ~(1UL << n);
 }
 
@@ -70,46 +78,71 @@ uint8_t count(uint64_t number) {
 }
 
 /**
- * Inspiration from https://www.hanshq.net/othello.html.
+ * Shift board in a certain direction
+ *
+ * @param The board
+ * @param The direction
+ *
+ * Based on https://www.hanshq.net/othello.html however, with some things
+ * changed. Including one bug-fix.
  */
-uint64_t shift(uint64_t board, dir_t dir) {
+static uint64_t shift(uint64_t board, direction_t direction) {
+    // The direction refers to the direction we shift in. Not to the amount
+    // of places that are supposed to be shifted.
+    // Clockwise
+    // 0: Up
+    // 1: Up-right
+    // 2: Right
+    // 3: Down-right
+    // 4: Down
+    // 5: Down-left
+    // 6: Left
+    // 7: Up-left
     static const uint64_t MASKS[] = {
+            0xFFFFFFFFFFFFFFFFULL, /* Up. */
+            0x7F7F7F7F7F7F7F00ULL, /* Up-right. */
             0x7F7F7F7F7F7F7F7FULL, /* Right. */
             0x007F7F7F7F7F7F7FULL, /* Down-right. */
             0xFFFFFFFFFFFFFFFFULL, /* Down. */
             0x00FEFEFEFEFEFEFEULL, /* Down-left. */
             0xFEFEFEFEFEFEFEFEULL, /* Left. */
-            0xFEFEFEFEFEFEFE00ULL, /* Up-left. */
-            0xFFFFFFFFFFFFFFFFULL, /* Up. */
-            0x7F7F7F7F7F7F7F00ULL  /* Up-right. */
+            0xFEFEFEFEFEFEFE00ULL /* Up-left. */
     };
     static const uint64_t LSHIFTS[] = {
+            8, /* Up. */
+            7, /* Up-right. */
             0, /* Right. */
             0, /* Down-right. */
             0, /* Down. */
             0, /* Down-left. */
             1, /* Left. */
-            9, /* Up-left. */
-            8, /* Up. */
-            7  /* Up-right. */
+            9  /* Up-left. */
     };
     static const uint64_t RSHIFTS[] = {
+            0, /* Up. */
+            0, /* Up-right. */
             1, /* Right. */
             9, /* Down-right. */
             8, /* Down. */
             7, /* Down-left. */
             0, /* Left. */
-            0, /* Up-left. */
-            0, /* Up. */
-            0  /* Up-right. */
+            0  /* Up-left. */
     };
-    return (dir < 8 / 2) ? ((board >> RSHIFTS[dir]) & MASKS[dir]) : ((board << LSHIFTS[dir]) & MASKS[dir]);
+
+    // Let's not waste calculations, shifts with 0 are id anyway
+    board >>= RSHIFTS[direction];
+    board <<= LSHIFTS[direction];
+    board &= MASKS[direction];
+    return board;
 }
 
 /**
+ * Place a piece on the field. First performs check to see if the field is not
+ * already occupied.
  *
  * @param[in,out] The board on which the move should be made
  * @param[in] The coordinate of the desired location
+ * @param[in] What should happen when the move is made
  */
 void do_move(board_t *board, uint8_t coordinate) {
     debug_print("Placing piece at: %" PRIu8 "\n", coordinate);
@@ -119,48 +152,62 @@ void do_move(board_t *board, uint8_t coordinate) {
         exit(EXIT_FAILURE);
     }
 
-    uint64_t captured = 0;
-    uint64_t move = 0;
-    uint64_t bounding, x;
+    uint64_t x, bounding_disk;
+    uint64_t new_disk = 0;
+    uint64_t captured_disks = 0;
 
-    set(&move, coordinate);
+    set(&new_disk, coordinate);
     set(&board->player, coordinate);
 
-    for (int i = 0; i < 8; ++i) {
-        x = shift(move, i) & board->opponent;
+    for (direction_t d = Up; d != UpLeft; d++) {
+        /* Find opponent disk adjacent to the new disk. */
+        x = shift(new_disk, d) & board->opponent;
 
-        x |= shift(x, i) & board->opponent;
-        x |= shift(x, i) & board->opponent;
-        x |= shift(x, i) & board->opponent;
-        x |= shift(x, i) & board->opponent;
-        x |= shift(x, i) & board->opponent;
+        /* Add any adjacent opponent disk to that one, and so on. */
+        x |= shift(x, d) & board->opponent;
+        x |= shift(x, d) & board->opponent;
+        x |= shift(x, d) & board->opponent;
+        x |= shift(x, d) & board->opponent;
+        x |= shift(x, d) & board->opponent;
 
-        bounding = shift(x, i) & board->player;
-        captured |= (bounding ? x : 0);
+        /* Determine whether the disks were captured. */
+        bounding_disk = shift(x, d) & board->player;
+        captured_disks |= (bounding_disk ? x : 0);
     }
 
-    board->player ^= captured;
-    board->opponent ^= captured;
+    board->player ^= captured_disks;
+    board->opponent ^= captured_disks;
 }
 
-uint64_t get_valid_moves(board_t board) {
-    uint64_t empty = ~(board.player | board.opponent);
-    uint64_t legal = 0;
-    uint64_t x;
+/**
+ * Generate all valid moves
+ *
+ * @param The board
+ *
+ * Based on https://www.hanshq.net/othello.html however, with some things
+ * changed.
+ */
+static uint64_t get_valid_moves(board_t board) {
+    uint64_t t_board;
+    uint64_t empty_cells = ~(board.player | board.opponent);
+    uint64_t legal_moves = 0;
 
-    for (int i = 0; i < 8; ++i) {
-        x = shift(board.player, i) & board.opponent;
+    for (direction_t d = Up; d != UpLeft; d++) {
+        /* Get opponent disks adjacent to my disks in direction dir. */
+        t_board = shift(board.player, d) & board.opponent;
 
-        x |= shift(x, i) & board.opponent;
-        x |= shift(x, i) & board.opponent;
-        x |= shift(x, i) & board.opponent;
-        x |= shift(x, i) & board.opponent;
-        x |= shift(x, i) & board.opponent;
+        /* Add opponent disks adjacent to those, and so on. */
+        t_board |= shift(t_board, d) & board.opponent;
+        t_board |= shift(t_board, d) & board.opponent;
+        t_board |= shift(t_board, d) & board.opponent;
+        t_board |= shift(t_board, d) & board.opponent;
+        t_board |= shift(t_board, d) & board.opponent;
 
-        legal |= shift(x, i) & empty;
+        /* Empty cells adjacent to those are valid moves. */
+        legal_moves |= shift(t_board, d) & empty_cells;
     }
 
-    return legal;
+    return legal_moves;
 }
 
 /**
