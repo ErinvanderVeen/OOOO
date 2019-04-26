@@ -1,17 +1,14 @@
 CC = clang
 CFLAGS = -Wall -Wextra -march=native
 
-all: reversi.c state_t.h ai.h
-	$(CC) $(CFLAGS) -Ofast reversi.c -o reversi.out
+all: othello.c state_t.h debug.h ai.h
+	$(CC) $(CFLAGS) -Ofast othello.c -o othello.out -DPERFORMANCE
 
-debug: reversi.c state_t.h ai.h
-	$(CC) $(CFLAGS) -fsanitize=address -g reversi.c -o reversi.out -DDEBUG
-
-test: debug
-	./reversi.out < tests/t1
+debug: othello.c state_t.h debug.h ai.h
+	$(CC) $(CFLAGS) -fsanitize=address -g othello.c -o othello.out -DDEBUG -DPERFORMANCE
 
 run: all
-	./reversi.out
+	./othello.out
 
 clean:
 	rm *.out

@@ -5,131 +5,109 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "debug.h"
 #include "state_t.h"
 
-/**
- * @param[in] The Player board
- * @param[in] The Opponent board
- * @param[out] What pieces should be flipped in case a coordinate is picked.
- *
- * @param[in,out] The coordinate of a valid move (0 - 63) or 64 in case no more valid moves exist
- */
-void next_possible_move(uint8_t *coordinate, uint64_t ai_valid_moves) {
-	while (*coordinate < 64) {
-		//TODO: Replace column, row with a single coordinate. Related to issue #10
-		if (is_piece(ai_valid_moves, *coordinate)) {
-			return;
-		}
-		(*coordinate)++;
-	}
-	*coordinate = 64;
-}
+#define LIMIT       1
+#define START_DEPTH 1
+#define MAX_DEPTH   64
 
-// Placeholder evaluation function
 double evaluation(board_t board) {
-	double c_player = (double) count_pieces(board.player);
-	double c_opponent = (double) count_pieces(board.opponent);
+    static const uint64_t CORNER_MASK = 0x8100000000000081ULL;
+    double score = 0;
 
-	return c_player - c_opponent;
+    // Reach the last move. If we are winning, assign a BIG score to us
+    if (~(board.opponent | board.player) == 0)
+        return (count(board.player) - count(board.opponent)) * (1 << 30);
+
+    // A typical strategy is to give up discs during the "early" game since it will benefit us later.
+    if (count(board.player | board.opponent) < 40)
+        score += (count(board.opponent) - count(board.player));
+    else
+        score += (count(board.player) - count(board.opponent));
+
+    // Corners are good
+    score += (CORNER_MASK & board.player - (CORNER_MASK & board.opponent)) * 10;
+
+    // Mobility is good
+    score += count(get_valid_moves(board)) * 100;
+
+    return score;
 }
 
 /**
- * alphabeta
+ *
+ *
+ * @param board
+ * @param depth
+ * @param alpha
+ * @param beta
+ * @param player -  the current player to consider. 1 is the player, -1 is the opponent
+ * @return
  */
-double alphabeta(board_t board, uint64_t depth, double alpha, double beta, bool maximize) {
-	debug_print("Depth: %" PRIu64 "\n", depth);
-	if (depth == 0)
-		return evaluation(board);
+double negamax(board_t board, uint64_t depth, double alpha, double beta, int player) {
+    if (depth == 0 || ~(board.player | board.opponent) == 0)
+        return player * evaluation(board);
 
-	double val;
+    double value = -INFINITY;
+    uint64_t valid = get_valid_moves(board);
 
-	uint8_t move = 0;
-	uint64_t ai_valid_moves = get_valid_moves(board);
+    for (int i = 0; i < 64; ++i) {
+        if (is_set(valid, i)) {
+            board_t new_board = {.player = board.player, .opponent = board.opponent};
+            do_move(&new_board, i);
 
-	if (maximize) {
-		next_possible_move(&move, ai_valid_moves);
-		val = -INFINITY;
+            // We want the perspective of the other player in the recursive call
+            switch_boards(&new_board);
 
-		while (move != 64) {
-			board_t new_board = {
-				.player = board.player,
-				.opponent = board.opponent
-			};
+            value = fmax(value, -negamax(new_board, depth - 1, -beta, -alpha, -player));
+            alpha = fmax(alpha, value);
 
-			// Update board states
-			do_move(&board, move);
-
-			val = fmax(val, alphabeta(new_board, depth - 1, alpha, beta, false));
-			alpha = fmax(alpha, val);
-
-			if (alpha >= beta)
-				break;
-
-			move++;
-			next_possible_move(&move, ai_valid_moves);
-		}
-		return val;
-	} else {
-		next_possible_move(&move, ai_valid_moves);
-		val = INFINITY;
-
-		while (move != 64) {
-			board_t new_board = {
-				.player = board.player,
-				.opponent = board.opponent
-			};
-
-			// Update board states
-			do_move(&board, move);
-
-			val = fmin(val, alphabeta(new_board, depth - 1, alpha, beta, true));
-			beta = fmin(beta, val);
-
-			if (alpha > beta)
-				break;
-
-			move++;
-			next_possible_move(&move, ai_valid_moves);
-		}
-		return val;
-	}
+            if (alpha >= beta)
+                break;
+        }
+    }
+    return value;
 }
 
 uint8_t ai_turn(board_t board) {
-	uint8_t best_move = 0;
-	double best_val = -INFINITY;
+    int8_t best_move = -1;
+    double best_value = 0;
+    uint64_t valid = get_valid_moves(board);
 
-	uint8_t move = 0;
-	double val;
+    if (count(valid) == 1) {
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (is_set(valid, i))
+                return i;
+        }
+    }
 
-	uint64_t ai_valid_moves = get_valid_moves(board);
+    uint8_t depth;
+    long last_time;
 
-	next_possible_move(&move, ai_valid_moves);
+    // TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
+    for (depth = START_DEPTH, last_time = time(NULL); (time(NULL) - last_time) < LIMIT && depth < MAX_DEPTH; depth++) {
+        printf("Max depth: %d\n", depth);
+        // TODO: Possible source for parallelization
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (is_set(valid, i)) {
+                double value = negamax(board, depth, -INFINITY, INFINITY, 1);
+                if (best_value < value) {
+                    best_value = value;
+                    best_move = i;
+                }
+            }
+        }
+    }
 
-	while (move != 64) {
-
-		// We don't make a copy of to_flip, because we don't have to
-		// it is updated after every next_possible_move anyway
-		board_t new_board = {
-			.player = board.player,
-			.opponent = board.opponent
-		};
-
-		// Update board states
-		do_move(&board, move);
-
-		// Perform alphabeta on all children
-		if ((val = alphabeta(new_board, 20, -INFINITY, INFINITY, false)) > best_val) {
-			best_move = move;
-			best_val = val;
-		}
-
-		move++;
-		next_possible_move(&move, ai_valid_moves);
-	}
-
-	return best_move;
+    if (best_move == -1) {
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (is_set(valid, i)) {
+                best_move = i;
+                break;
+            }
+        }
+    }
+    return best_move;
 }
 
 #endif
