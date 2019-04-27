@@ -5,8 +5,8 @@
 #include <stdlib.h>
 
 #include "ai.h"
-#include "state_t.h"
 #include "debug.h"
+#include "state_t.h"
 
 #define TIME_LIMIT 10
 
