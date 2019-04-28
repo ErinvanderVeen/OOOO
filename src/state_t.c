@@ -159,9 +159,9 @@ void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
 		for (int8_t x = y; x >= y - 7; x--) {
 			printf("|");
 			if (is_set(board.player, x)) {
-				printf(" □ ");
+				printf(" ○ ");
 			} else if (is_set(board.opponent, x)) {
-				printf(" ■ ");
+				printf(" ● ");
 			} else if (is_set(valid_moves, x) && show_valid_moves) {
 				printf(" * ");
 			} else {
