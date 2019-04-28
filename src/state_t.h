@@ -248,23 +248,24 @@ void switch_boards(board_t *board) {
 void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
 	// Duplicate horizontal bars because our pieces are double-width
 	for (int8_t y = 63; y >= 0; y -= 8) {
-		printf("  -----------------\n");
+		printf("  ---------------------------------\n");
 		printf("%" PRIu8 " ", (7 - (y / 8)) + 1);
 		for (int8_t x = y; x >= y - 7; x--) {
 			printf("|");
 			if (is_set(board.player, x)) {
-				printf("P");
+				printf(" □ ");
 			} else if (is_set(board.opponent, x)) {
-				printf("o");
+				printf(" ■ ");
 			} else if (is_set(valid_moves, x) && show_valid_moves) {
-				printf("*");
+				printf(" * ");
 			} else {
-				printf(" ");
+				printf("   ");
 			}
 		}
 		printf("|\n");
 	}
-	printf("   a b c d e f g h\n");
+	printf("  ---------------------------------\n");
+	printf("    a   b   c   d   e   f   g   h\n");
 }
 
 /**
@@ -273,19 +274,20 @@ void print_state(board_t board, uint64_t valid_moves, bool show_valid_moves) {
 void print_board(uint64_t board) {
 	// Duplicate horizontal bars because our pieces are double-width
 	for (int8_t y = 63; y >= 0; y -= 8) {
-		printf("  -----------------\n");
+		printf("  ---------------------------------\n");
 		printf("%" PRIu8 " ", (7 - (y / 8)) + 1);
 		for (int8_t x = y; x >= y - 7; x--) {
 			printf("|");
 			if (is_set(board, x)) {
-				printf("*");
+				printf(" ■ ");
 			} else {
-				printf(" ");
+				printf("   ");
 			}
 		}
 		printf("|\n");
 	}
-	printf("   a b c d e f g h\n");
+	printf("  ---------------------------------\n");
+	printf("    a   b   c   d   e   f   g   h\n");
 }
 
 #endif
