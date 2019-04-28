@@ -25,3 +25,4 @@ run: all
 clean:
 	rm *.o
 	rm *.out
+	rm *.o
