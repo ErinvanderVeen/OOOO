@@ -15,6 +15,7 @@ typedef struct {
 void add_eval(board_eval_t *eval);
 board_eval_t *find_eval(board_t board);
 void delete_eval(board_eval_t *eval);
+void init_map(void);
 void free_map(void);
 
 #endif

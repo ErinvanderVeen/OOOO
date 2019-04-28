@@ -2,7 +2,6 @@
 #define AI_H
 
 #include <inttypes.h>
-#include <math.h>
 #include <stdlib.h>
 
 #include "state_t.h"

@@ -1,7 +1,9 @@
 #include "ai.h"
 
 #include <assert.h>
+#include <math.h>
 #include <time.h>
+#include <omp.h>
 
 #include "debug.h"
 #include "eval_hashmap.h"
@@ -80,6 +82,9 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 }
 
 uint8_t ai_turn(board_t board) {
+
+	init_map();
+
 	uint64_t valid = get_valid_moves(board);
 	nodes = 0;
 
@@ -97,16 +102,20 @@ uint8_t ai_turn(board_t board) {
 	for (depth = START_DEPTH, last_time = time(NULL); (time(NULL) - last_time) < LIMIT && depth < MAX_DEPTH; depth++) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
-		for (uint8_t i = 0; i < 64; ++i) {
-			if (is_set(valid, i)) {
-				board_t new_board = {.player = board.player, .opponent = board.opponent};
-				do_move(&new_board, i);
+#pragma omp parallel
+		{
+			for (uint8_t i = 0; i < 64; ++i) {
+				if (is_set(valid, i)) {
+					board_t new_board = {.player = board.player, .opponent = board.opponent};
+					do_move(&new_board, i);
 
-				// We want the perspective of the other player in the recursive call
-				switch_boards(&new_board);
+					// We want the perspective of the other player in the recursive call
+					switch_boards(&new_board);
 
-				negamax(new_board, depth, -INFINITY, INFINITY, 1);
+					negamax(new_board, depth, -INFINITY, INFINITY, 1);
+				}
 			}
+#pragma omp barrier
 		}
 	}
 

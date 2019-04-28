@@ -1,5 +1,5 @@
-CC = clang
-CFLAGS = -Wall -Wextra -march=native
+CC = gcc
+CFLAGS = -Wall -Wextra -march=native -fopenmp -fPIC -lm
 
 all: CFLAGS += -Ofast -DPERFORMANCE
 all: othello
@@ -23,5 +23,5 @@ run: all
 	./othello.out
 
 clean:
-	rm *.out
 	rm *.o
+	rm *.out
