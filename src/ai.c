@@ -3,10 +3,13 @@
 #include <time.h>
 
 #include "debug.h"
+#include "eval_hashmap.h"
 
 #define LIMIT       1
 #define START_DEPTH 1
 #define MAX_DEPTH   64
+
+static uint64_t nodes;
 
 double evaluation(board_t board) {
 	static const uint64_t CORNER_MASK = 0x8100000000000081ULL;
@@ -32,6 +35,12 @@ double evaluation(board_t board) {
 }
 
 double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t player) {
+	// Lookup board in hash table
+	board_eval_t *eval = find_eval(board);
+	if (eval != NULL && eval->depth > depth)
+		return eval->value;
+
+	// Depth 0, use evaluation function
 	if (depth == 0 || ~(board.player | board.opponent) == 0)
 		return player * evaluation(board);
 
@@ -53,6 +62,19 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 				break;
 		}
 	}
+
+	// Place/update in hashtable
+	if (eval == NULL) {
+		eval = malloc(sizeof(*eval));
+		eval->board = board;
+		// Note, we add first, based on only the board
+		// after that, we set the values
+		add_eval(eval);
+	}
+	eval->value = value;
+	eval->depth = depth;
+
+	nodes++;
 	return value;
 }
 
@@ -74,7 +96,8 @@ uint8_t ai_turn(board_t board) {
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
 	for (depth = START_DEPTH, last_time = time(NULL); (time(NULL) - last_time) < LIMIT && depth < MAX_DEPTH; depth++) {
 		debug_print("Max depth: %d\n", depth);
-		// TODO: Possible source for parallelization
+		nodes = 0;
+
 		for (uint8_t i = 0; i < 64; ++i) {
 			if (is_set(valid, i)) {
 				double value = negamax(board, depth, -INFINITY, INFINITY, 1);
@@ -85,6 +108,8 @@ uint8_t ai_turn(board_t board) {
 			}
 		}
 	}
+
+	printf("Nodes/s: %f\n", (double) nodes / LIMIT);
 
 	if (best_move == -1) {
 		for (uint8_t i = 0; i < 64; ++i) {
