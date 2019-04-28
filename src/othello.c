@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <locale.h>
 #include <stdbool.h>
+#include <string.h>
 #include <time.h>
 #include <stdlib.h>
 
@@ -28,6 +29,9 @@ bool white_skipped;
 bool black_skipped;
 bool finished;
 
+uint8_t transcript_cnt;
+char transcript[121];
+
 void setup(void) {
 	turn = BLACK;
 
@@ -37,6 +41,9 @@ void setup(void) {
 
 	board.player = 0b0000000000000000000000000000100000010000000000000000000000000000;
 	board.opponent = 0b0000000000000000000000000001000000001000000000000000000000000000;
+
+	transcript_cnt = 0;
+	memset(transcript, '\0', 120 * sizeof(char));
 }
 
 void switch_players(void) {
@@ -108,6 +115,9 @@ void perform_turn(void) {
 			break;
 	}
 
+	transcript[transcript_cnt++] = (char) (7 - (choice % 8)) + 97;
+	transcript[transcript_cnt++] = (char) (7 - (choice / 8)) + 49;
+
 	do_move(&board, choice);
 }
 
@@ -156,6 +166,7 @@ int main(void) {
 			else
 				draw++;
 		}
+		printf("Transcript: %s\n\n", transcript);
 	}
 
 	printf("Games/s:\t%.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
