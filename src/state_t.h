@@ -43,6 +43,14 @@ typedef struct {
 } board_t;
 
 /**
+ * Converts the internal coordinate representation to a human readable one
+ *
+ * @param[in] Coordinate in internal representation
+ * @param[out] Coordinate in human readble format
+ */
+void from_coordinate(uint8_t c, char *column, char *row);
+
+/**
  * Checks if the specified bit is set.
  *
  * @param[in] Number to check on

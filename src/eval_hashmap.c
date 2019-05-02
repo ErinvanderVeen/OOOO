@@ -9,6 +9,11 @@ static board_eval_t *eval_hashmap = NULL;
 static omp_lock_t maplock;
 #endif
 
+#ifdef METRICS
+static uint64_t total_hits;
+static uint64_t total_misses;
+#endif
+
 void add_eval(board_eval_t *eval) {
 #ifdef PARALLEL
 	omp_set_lock(&maplock);
@@ -30,6 +35,13 @@ board_eval_t *find_eval(board_t board) {
 	omp_unset_lock(&maplock);
 #endif
 
+#ifdef METRICS
+	if (eval == NULL)
+		total_misses++;
+	else
+		total_hits++;
+#endif
+
 	return eval;
 }
 
@@ -47,6 +59,10 @@ void init_map(void) {
 #ifdef PARALLEL
 	omp_init_lock(&maplock);
 #endif
+#ifdef METRICS
+	total_hits = 0;
+	total_misses = 0;
+#endif
 }
 
 void free_map(void) {
@@ -59,5 +75,10 @@ void free_map(void) {
 
 #ifdef PARALLEL
 	omp_destroy_lock(&maplock);
+#endif
+#ifdef METRICS
+	printf("HASHMAP:\n");
+	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
+	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
 #endif
 }

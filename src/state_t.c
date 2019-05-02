@@ -4,6 +4,15 @@
 
 #define ONE (uint64_t) 1
 
+void from_coordinate(uint8_t c, char *column, char *row) {
+	static char letters[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+	static char numbers[8] = {'1', '2', '3', '4', '5', '6', '7', '8'};
+	c = 63 - c;
+	*column = letters[c % 8];
+	*row = numbers[c / 8];
+}
+
+
 bool is_set(uint64_t number, uint8_t n) {
 	return (number & ONE << n) != 0;
 }

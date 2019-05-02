@@ -13,6 +13,10 @@ parallel: othello
 paralleldebug: CFLAGS += -g -DPARALLEL -DDEBUG
 paralleldebug: othello
 
+# Passing this flag will enable performance metrics
+metrics: CFLAGS += -Ofast -DPARALLEL -DMETRICS
+metrics: othello
+
 othello: othello.c ai.o state_t.o
 	$(CC) $(CFLAGS) othello.c ai.o state_t.o eval_hashmap.o -o othello.out
 
