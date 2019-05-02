@@ -1,11 +1,17 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -march=native -fopenmp -fPIC -lm
 
-all: CFLAGS += -Ofast -DPERFORMANCE
-all: othello
+serial: CFLAGS += -Ofast
+serial: othello
 
-debug: CFLAGS += -g -DDEBUG
-debug: othello
+serialdebug: CFLAGS += -g -DDEBUG
+serialdebug: othello
+
+parallel: CFLAGS += -Ofast -DPARALLEL
+parallel: othello
+
+paralleldebug: CFLAGS += -g -DPARALLEL -DDEBUG
+paralleldebug: othello
 
 othello: othello.c ai.o state_t.o
 	$(CC) $(CFLAGS) othello.c ai.o state_t.o eval_hashmap.o -o othello.out
@@ -23,6 +29,4 @@ run: all
 	./othello.out
 
 clean:
-	rm *.o
-	rm *.out
-	rm *.o
+	rm *.o; rm *.out
