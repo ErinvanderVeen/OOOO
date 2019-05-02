@@ -94,7 +94,7 @@ void do_move(board_t *board, uint8_t coordinate) {
 	set(&new_disk, coordinate);
 	set(&board->player, coordinate);
 
-	for (direction_t d = Up; d != UpLeft; d++) {
+	for (direction_t d = Up; d <= UpLeft; d++) {
 		/* Find opponent disk adjacent to the new disk. */
 		x = shift(new_disk, d) & board->opponent;
 
@@ -119,7 +119,7 @@ uint64_t get_valid_moves(board_t board) {
 	uint64_t empty_cells = ~(board.player | board.opponent);
 	uint64_t legal_moves = 0;
 
-	for (direction_t d = Up; d != UpLeft; d++) {
+	for (direction_t d = Up; d <= UpLeft; d++) {
 		/* Get opponent disks adjacent to my disks in direction dir. */
 		t_board = shift(board.player, d) & board.opponent;
 
