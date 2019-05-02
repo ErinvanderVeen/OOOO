@@ -8,7 +8,7 @@
 #include "debug.h"
 #include "state_t.h"
 
-#define TIME_LIMIT 10
+#define TIME_LIMIT 300
 
 typedef enum {
 	HUMAN, AI, RANDOM
@@ -42,6 +42,14 @@ void setup(void) {
 void switch_players(void) {
 	switch_boards(&board);
 	turn = (turn == WHITE) ? BLACK : WHITE;
+}
+
+void from_coordinate(uint8_t c, char *column, char *row) {
+	static char letters[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+	static char numbers[8] = {'1', '2', '3', '4', '5', '6', '7', '8'};
+	c = 63 - c;
+	*column = letters[c % 8];
+	*row = numbers[c / 8];
 }
 
 uint8_t random_turn(void) {
@@ -102,6 +110,9 @@ void perform_turn(void) {
 			break;
 		case AI:
 			choice = ai_turn(board);
+			char c, r;
+			from_coordinate(choice, &c, &r);
+			printf("AI Chose: %c%c\n", c, r);
 			break;
 		case RANDOM:
 			choice = random_turn();

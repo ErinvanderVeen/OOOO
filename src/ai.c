@@ -2,17 +2,27 @@
 
 #include <assert.h>
 #include <math.h>
-#include <time.h>
 #include <omp.h>
+#include <stdbool.h>
+#include <time.h>
 
 #include "debug.h"
 #include "eval_hashmap.h"
 
-#define LIMIT       1
+#define TIMELIMIT   100 //In ms
 #define START_DEPTH 1
 #define MAX_DEPTH   64
 
 static uint64_t nodes;
+static long end_time_ms;
+static bool finished;
+
+static long get_time_ms(void) {
+	struct timespec spec;
+
+	clock_gettime(CLOCK_REALTIME, &spec);
+	return spec.tv_nsec / 1.0e6 + spec.tv_sec * 1000;
+}
 
 double evaluation(board_t board) {
 	static const uint64_t CORNER_MASK = 0x8100000000000081ULL;
@@ -38,6 +48,15 @@ double evaluation(board_t board) {
 }
 
 double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t player) {
+	// If we should be done with regards to time,
+	// end this evaluation
+	// Note: It does not matter what we return, because as soon as finished is
+	// set to true, all results are disregarded
+	if (get_time_ms() >= end_time_ms) {
+		finished = true;
+		return -INFINITY;
+	}
+
 	// Lookup board in hash table
 	board_eval_t *eval = find_eval(board);
 	if (eval != NULL && eval->depth > depth)
@@ -50,7 +69,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	double value = -INFINITY;
 	uint64_t valid = get_valid_moves(board);
 
-	for (uint8_t i = 0; i < 64; ++i) {
+	for (uint8_t i = 0; i < 64 && !finished; ++i) {
 		if (is_set(valid, i)) {
 			board_t new_board = {.player = board.player, .opponent = board.opponent};
 			do_move(&new_board, i);
@@ -65,6 +84,10 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 				break;
 		}
 	}
+
+	// Prematurely end, do not update hashtable
+	if (finished)
+		return value;
 
 	// Place/update in hashtable
 	if (eval == NULL) {
@@ -82,6 +105,14 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 }
 
 uint8_t ai_turn(board_t board) {
+#ifdef DEBUG
+	long start_time_ms = get_time_ms();
+	end_time_ms = start_time_ms + TIMELIMIT;
+#else
+	end_time_ms = get_time_ms() + TIMELIMIT;
+#endif
+
+	finished = false;
 
 	init_map();
 
@@ -96,10 +127,9 @@ uint8_t ai_turn(board_t board) {
 	}
 
 	uint8_t depth;
-	long last_time;
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH, last_time = time(NULL); (time(NULL) - last_time) < LIMIT && depth < MAX_DEPTH; depth++) {
+	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH; depth++) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
 #ifdef PARALLEL
@@ -142,7 +172,9 @@ uint8_t ai_turn(board_t board) {
 		}
 	}
 
-	printf("Nodes/s: %f\n", (double) nodes / LIMIT);
+#ifdef DEBUG
+	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
+#endif
 
 	assert(best_move != -1);
 
