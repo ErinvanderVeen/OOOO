@@ -18,6 +18,6 @@
  */
 double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t player);
 
-uint8_t ai_turn(board_t board);
+int8_t ai_turn(board_t board);
 
 #endif
