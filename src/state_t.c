@@ -4,6 +4,15 @@
 
 #define ONE (uint64_t) 1
 
+void from_coordinate(uint8_t c, char *column, char *row) {
+	static char letters[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+	static char numbers[8] = {'1', '2', '3', '4', '5', '6', '7', '8'};
+	c = 63 - c;
+	*column = letters[c % 8];
+	*row = numbers[c / 8];
+}
+
+
 bool is_set(uint64_t number, uint8_t n) {
 	return (number & ONE << n) != 0;
 }
@@ -94,7 +103,7 @@ void do_move(board_t *board, uint8_t coordinate) {
 	set(&new_disk, coordinate);
 	set(&board->player, coordinate);
 
-	for (direction_t d = Up; d != UpLeft; d++) {
+	for (direction_t d = Up; d <= UpLeft; d++) {
 		/* Find opponent disk adjacent to the new disk. */
 		x = shift(new_disk, d) & board->opponent;
 
@@ -119,7 +128,7 @@ uint64_t get_valid_moves(board_t board) {
 	uint64_t empty_cells = ~(board.player | board.opponent);
 	uint64_t legal_moves = 0;
 
-	for (direction_t d = Up; d != UpLeft; d++) {
+	for (direction_t d = Up; d <= UpLeft; d++) {
 		/* Get opponent disks adjacent to my disks in direction dir. */
 		t_board = shift(board.player, d) & board.opponent;
 
