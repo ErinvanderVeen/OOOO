@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -march=native -fopenmp -fPIC -lm
+CFLAGS = -Wall -Wextra -march=native -fPIC -lm
 
 serial: CFLAGS += -Ofast
 serial: othello
@@ -7,14 +7,14 @@ serial: othello
 serialdebug: CFLAGS += -g -DDEBUG
 serialdebug: othello
 
-parallel: CFLAGS += -Ofast -DPARALLEL
+parallel: CFLAGS += -fopenmp -Ofast -DPARALLEL
 parallel: othello
 
-paralleldebug: CFLAGS += -g -DPARALLEL -DDEBUG
+paralleldebug: CFLAGS += -fopenmp -g -DPARALLEL -DDEBUG
 paralleldebug: othello
 
 # Passing this flag will enable performance metrics
-metrics: CFLAGS += -Ofast -DPARALLEL -DMETRICS
+metrics: CFLAGS += -fopenmp -Ofast -DPARALLEL -DMETRICS
 metrics: othello
 
 othello: othello.c ai.o state_t.o
