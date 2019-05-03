@@ -6,12 +6,12 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "debug.hpp"
-#include "eval_hashmap.hpp"
+#include "../lib/debug.hpp"
+#include "../lib/eval_hashmap.hpp"
 
-#define TIMELIMIT   100 //In ms
 #define START_DEPTH 1
-#define MAX_DEPTH   64
+uint64_t time_limit; //In ms
+uint8_t max_depth = 64;
 
 #ifdef METRICS
 static uint64_t branches;
@@ -27,6 +27,10 @@ static long get_time_ms(void) {
 
 	clock_gettime(CLOCK_REALTIME, &spec);
 	return spec.tv_nsec / 1.0e6 + spec.tv_sec * 1000;
+}
+
+void set_max_depth(uint8_t depth) {
+	max_depth = depth;
 }
 
 double evaluation(board_t board) {
@@ -157,12 +161,13 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	return value;
 }
 
-int8_t ai_turn(board_t board) {
+int8_t ai_turn(board_t board, uint64_t time_ms) {
+	time_limit = time_ms;
 #ifdef DEBUG
 	long start_time_ms = get_time_ms();
-	end_time_ms = start_time_ms + TIMELIMIT;
+	end_time_ms = start_time_ms + time_limit;
 #else
-	end_time_ms = get_time_ms() + TIMELIMIT;
+	end_time_ms = get_time_ms() + time_limit;
 #endif
 
 #ifdef METRICS
@@ -187,7 +192,7 @@ int8_t ai_turn(board_t board) {
 	uint8_t depth;
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH; depth++) {
+	for (depth = START_DEPTH; !finished && depth < max_depth; depth++) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
 #pragma omp parallel
@@ -216,7 +221,7 @@ int8_t ai_turn(board_t board) {
 	// Retrieve the best move from the hashtable
 	int8_t best_move = get_best_move(board, valid);
 
-	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
+	printf("info nodes %" PRIu64 "\n", nodes);
 
 	assert(best_move != -1);
 

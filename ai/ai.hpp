@@ -4,7 +4,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
-#include "state_t.hpp"
+#include "../lib/state_t.hpp"
+
+void set_max_depth(uint8_t depth);
 
 /**
  * Performs negamax on the provided board. Negamax is an algorithm that 
@@ -18,6 +20,6 @@
  */
 double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t player);
 
-int8_t ai_turn(board_t board);
+int8_t ai_turn(board_t board, uint64_t time_ms);
 
 #endif
