@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17
+CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17 -lstdc++
 
 serial: CFLAGS += -Ofast
 serial: othello
