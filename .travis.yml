@@ -1,0 +1,14 @@
+language: cpp
+compiler: gcc
+dist: trusty
+
+before_install:
+  # C++17
+  - sudo apt-get update
+
+install:
+  # C++17
+  - sudo apt-get install -qq gcc
+
+script:
+  - make -C src
