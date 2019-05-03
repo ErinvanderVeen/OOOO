@@ -190,9 +190,7 @@ int8_t ai_turn(board_t board) {
 	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH; depth++) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
-#ifdef PARALLEL
 #pragma omp parallel
-#endif
 		{
 			for (uint8_t i = 0; i < 64; ++i) {
 				if (is_set(valid, i)) {
@@ -205,9 +203,7 @@ int8_t ai_turn(board_t board) {
 					negamax(new_board, depth, -INFINITY, INFINITY, 1);
 				}
 			}
-#ifdef PARALLEL
 #pragma omp barrier
-#endif
 		}
 #ifdef METRICS
 		printf("DEPTH: %" PRIu8 "\n", depth);
