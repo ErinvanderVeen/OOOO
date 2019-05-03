@@ -30,7 +30,7 @@ bool black_skipped;
 bool finished;
 
 uint8_t transcript_cnt;
-char transcript[121];
+uint8_t transcript[60];
 
 void setup(void) {
 	turn = BLACK;
@@ -43,7 +43,7 @@ void setup(void) {
 	board.opponent = 0b0000000000000000000000000001000000001000000000000000000000000000;
 
 	transcript_cnt = 0;
-	memset(transcript, '\0', 120 * sizeof(char));
+	memset(transcript, 255, 60 * sizeof(char));
 }
 
 void switch_players(void) {
@@ -51,12 +51,17 @@ void switch_players(void) {
 	turn = (turn == WHITE) ? BLACK : WHITE;
 }
 
-void from_coordinate(uint8_t c, char *column, char *row) {
-	static char letters[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
-	static char numbers[8] = {'1', '2', '3', '4', '5', '6', '7', '8'};
-	c = 63 - c;
-	*column = letters[c % 8];
-	*row = numbers[c / 8];
+void print_transcript(void) {
+	printf("Transcript: ");
+	for (int i = 0; i < 60; ++i) {
+		if (transcript[i] == 255)
+			break;
+
+		char column, row;
+		from_coordinate(transcript[i], &column, &row);
+		printf("%c%c", column, row);
+	}
+	printf("\n");
 }
 
 uint8_t random_turn(void) {
@@ -110,7 +115,7 @@ void perform_turn(void) {
 	else
 		black_skipped = false;
 
-	uint8_t choice;
+	uint8_t choice = 0;
 	switch (turn == WHITE ? white : black) {
 		case HUMAN:
 			choice = human_turn();
@@ -126,8 +131,7 @@ void perform_turn(void) {
 			break;
 	}
 
-	transcript[transcript_cnt++] = (char) (7 - (choice % 8)) + 97;
-	transcript[transcript_cnt++] = (char) (7 - (choice / 8)) + 49;
+	transcript[transcript_cnt++] = choice;
 
 	do_move(&board, choice);
 }
@@ -177,7 +181,7 @@ int main(void) {
 			else
 				draw++;
 		}
-		printf("Transcript: %s\n\n", transcript);
+		print_transcript();
 	}
 
 	printf("Games/s:\t%.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
