@@ -1,8 +1,8 @@
-#include "eval_hashmap.h"
+#include "eval_hashmap.hpp"
 
 #include <omp.h>
 
-#include "debug.h"
+#include "debug.hpp"
 
 static board_eval_t *eval_hashmap = NULL;
 #ifdef PARALLEL

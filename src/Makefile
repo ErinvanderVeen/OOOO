@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -march=native -fPIC -lm
+CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17 -lstdc++
 
 serial: CFLAGS += -Ofast
 serial: othello
@@ -17,17 +17,17 @@ paralleldebug: othello
 metrics: CFLAGS += -fopenmp -Ofast -DPARALLEL -DMETRICS
 metrics: othello
 
-othello: othello.c ai.o state_t.o
-	$(CC) $(CFLAGS) othello.c ai.o state_t.o eval_hashmap.o -o othello.out
+othello: othello.cpp ai.o state_t.o
+	$(CC) $(CFLAGS) othello.cpp ai.o state_t.o eval_hashmap.o -o othello.out
 
-ai.o: ai.c ai.h state_t.o eval_hashmap.o
-	$(CC) $(CFLAGS) -c ai.c
+ai.o: ai.cpp ai.hpp state_t.o eval_hashmap.o
+	$(CC) $(CFLAGS) -c ai.cpp
 
-state_t.o: state_t.c state_t.h
-	$(CC) $(CFLAGS) -c state_t.c
+state_t.o: state_t.cpp state_t.hpp
+	$(CC) $(CFLAGS) -c state_t.cpp
 
-eval_hashmap.o: eval_hashmap.c eval_hashmap.h
-	$(CC) $(CFLAGS) -c eval_hashmap.c
+eval_hashmap.o: eval_hashmap.cpp eval_hashmap.hpp
+	$(CC) $(CFLAGS) -c eval_hashmap.cpp
 
 run: all
 	./othello.out

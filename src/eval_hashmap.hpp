@@ -3,7 +3,7 @@
 
 #include <uthash.h>
 
-#include "state_t.h"
+#include "state_t.hpp"
 
 typedef struct {
 	board_t board;

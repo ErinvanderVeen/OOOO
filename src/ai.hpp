@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
-#include "state_t.h"
+#include "state_t.hpp"
 
 /**
  * Performs negamax on the provided board. Negamax is an algorithm that 

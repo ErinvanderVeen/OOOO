@@ -5,9 +5,9 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "ai.h"
-#include "debug.h"
-#include "state_t.h"
+#include "ai.hpp"
+#include "debug.hpp"
+#include "state_t.hpp"
 
 #define TIME_LIMIT 300
 

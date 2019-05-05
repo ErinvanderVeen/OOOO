@@ -1,6 +1,6 @@
-#include "state_t.h"
+#include "state_t.hpp"
 
-#include "debug.h"
+#include "debug.hpp"
 
 #define ONE (uint64_t) 1
 
@@ -38,7 +38,7 @@ uint8_t count(uint64_t number) {
  * Based on https://www.hanshq.net/othello.html however, with some things
  * changed. Including one bug-fix.
  */
-static uint64_t shift(uint64_t board, direction_t direction) {
+static uint64_t shift(uint64_t board, uint8_t direction) {
 	// The direction refers to the direction we shift in. Not to the amount
 	// of places that are supposed to be shifted.
 	// Clockwise
@@ -103,7 +103,7 @@ void do_move(board_t *board, uint8_t coordinate) {
 	set(&new_disk, coordinate);
 	set(&board->player, coordinate);
 
-	for (direction_t d = Up; d <= UpLeft; d++) {
+	for (uint8_t d = 0; d <= 7; d++) {
 		/* Find opponent disk adjacent to the new disk. */
 		x = shift(new_disk, d) & board->opponent;
 
@@ -128,7 +128,7 @@ uint64_t get_valid_moves(board_t board) {
 	uint64_t empty_cells = ~(board.player | board.opponent);
 	uint64_t legal_moves = 0;
 
-	for (direction_t d = Up; d <= UpLeft; d++) {
+	for (uint8_t d = 0; d <= 7; d++) {
 		/* Get opponent disks adjacent to my disks in direction dir. */
 		t_board = shift(board.player, d) & board.opponent;
 

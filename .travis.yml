@@ -1,0 +1,14 @@
+language: cpp
+compiler: gcc
+dist: disco
+
+before_install:
+  # C++17
+  - sudo apt-get update
+
+install:
+  # C++17
+  - sudo apt-get install -qq gcc uthash-dev
+
+script:
+  - make -C src

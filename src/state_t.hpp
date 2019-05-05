@@ -5,16 +5,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-typedef enum {
-	Up = 0,
-	UpRight = 1,
-	Right = 2,
-	DownRight = 3,
-	Down = 4,
-	DownLeft = 5,
-	Left = 6,
-	UpLeft = 7
-} direction_t;
 /**
  * Holds the most common way the board state is represented
  * Note the bottom right square is the least significant bit

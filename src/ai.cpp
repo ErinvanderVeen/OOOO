@@ -1,4 +1,4 @@
-#include "ai.h"
+#include "ai.hpp"
 
 #include <assert.h>
 #include <math.h>
@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "debug.h"
-#include "eval_hashmap.h"
+#include "debug.hpp"
+#include "eval_hashmap.hpp"
 
 #define TIMELIMIT   100 //In ms
 #define START_DEPTH 1
@@ -137,7 +137,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 	// Place/update in hashtable
 	if (eval == NULL) {
-		eval = malloc(sizeof(*eval));
+		eval = (board_eval_t*) malloc(sizeof(*eval));
 		eval->board = board;
 		// Note, we add first, based on only the board
 		// after that, we set the values

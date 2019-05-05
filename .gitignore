@@ -1,5 +1,9 @@
+### GDB ###
+.gdb_history
+
 ### C ###
 *.out
+*.o
 
 ### LaTeX ###
 ## Core latex/pdflatex auxiliary files:
