@@ -218,7 +218,9 @@ int8_t ai_turn(board_t board) {
 
 	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
 
-	assert(best_move != -1);
+	if(best_move == -1)
+		// Get the least significant set bit in the valid bitmask
+		best_move = __builtin_ffsl(valid) - 1;
 
 #ifdef METRICS
 	printf("AI:\n");
