@@ -67,7 +67,10 @@ static uint8_t count_children(uint64_t valid) {
  */
 static int8_t get_best_move(board_t board, uint64_t valid) {
 	double best_value = -INFINITY;
-	int8_t best_move = -1;
+
+	// Set the least significant set bit in the valid bitmask as default move
+	int8_t best_move = __builtin_ffsl(valid) - 1;
+
 	for (uint8_t i = 0; i < 64; ++i) {
 		if (is_set(valid, i)) {
 			board_t new_board = {.player = board.player, .opponent = board.opponent};
@@ -217,10 +220,6 @@ int8_t ai_turn(board_t board) {
 	int8_t best_move = get_best_move(board, valid);
 
 	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
-
-	if(best_move == -1)
-		// Get the least significant set bit in the valid bitmask
-		best_move = __builtin_ffsl(valid) - 1;
 
 #ifdef METRICS
 	printf("AI:\n");
