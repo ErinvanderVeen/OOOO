@@ -44,7 +44,7 @@ double evaluation(board_t board) {
 		score += (count(board.player) - count(board.opponent));
 
 	// Corners are good
-	score += (CORNER_MASK & board.player - (CORNER_MASK & board.opponent)) * 10;
+	score += ((CORNER_MASK & board.player) - (CORNER_MASK & board.opponent)) * 10;
 
 	// Mobility is good
 	score += count(get_valid_moves(board)) * 100;
