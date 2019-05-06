@@ -52,15 +52,6 @@ double evaluation(board_t board) {
 	return score;
 }
 
-static uint8_t count_children(uint64_t valid) {
-	uint8_t count = 0;
-	for (uint8_t i = 0; i < 64; ++i) {
-		if (is_set(valid, i))
-			count++;
-	}
-	return count;
-}
-
 /**
  * This function fetches the best child from the hashmap
  * It is important that at least one child has a value in the hashtable
@@ -151,7 +142,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 #ifdef METRICS
 	// Ensure that we don't get mixed up print data (hampers performance)
-	uint8_t children = count_children(valid);
+	uint8_t children = count(valid);
 	branches += children;
 	branches_evaluated += children_evaluated;
 #endif
