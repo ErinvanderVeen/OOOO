@@ -9,7 +9,7 @@
 #include "debug.hpp"
 #include "state_t.hpp"
 
-#define TIME_LIMIT 300
+#define TIME_LIMIT 10
 
 typedef enum {
 	HUMAN, AI, RANDOM

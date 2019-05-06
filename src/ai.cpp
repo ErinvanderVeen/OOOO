@@ -44,21 +44,12 @@ double evaluation(board_t board) {
 		score += (count(board.player) - count(board.opponent));
 
 	// Corners are good
-	score += (CORNER_MASK & board.player - (CORNER_MASK & board.opponent)) * 10;
+	score += ((CORNER_MASK & board.player) - (CORNER_MASK & board.opponent)) * 10;
 
 	// Mobility is good
 	score += count(get_valid_moves(board)) * 100;
 
 	return score;
-}
-
-static uint8_t count_children(uint64_t valid) {
-	uint8_t count = 0;
-	for (uint8_t i = 0; i < 64; ++i) {
-		if (is_set(valid, i))
-			count++;
-	}
-	return count;
 }
 
 /**
@@ -67,7 +58,10 @@ static uint8_t count_children(uint64_t valid) {
  */
 static int8_t get_best_move(board_t board, uint64_t valid) {
 	double best_value = -INFINITY;
-	int8_t best_move = -1;
+
+	// Set the least significant set bit in the valid bitmask as default move
+	int8_t best_move = __builtin_ffsl(valid) - 1;
+
 	for (uint8_t i = 0; i < 64; ++i) {
 		if (is_set(valid, i)) {
 			board_t new_board = {.player = board.player, .opponent = board.opponent};
@@ -148,7 +142,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 #ifdef METRICS
 	// Ensure that we don't get mixed up print data (hampers performance)
-	uint8_t children = count_children(valid);
+	uint8_t children = count(valid);
 	branches += children;
 	branches_evaluated += children_evaluated;
 #endif
@@ -217,8 +211,6 @@ int8_t ai_turn(board_t board) {
 	int8_t best_move = get_best_move(board, valid);
 
 	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
-
-	assert(best_move != -1);
 
 #ifdef METRICS
 	printf("AI:\n");
