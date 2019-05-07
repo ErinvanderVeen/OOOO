@@ -60,7 +60,7 @@ static int8_t get_best_move(board_t board, uint64_t valid) {
 	double best_value = -INFINITY;
 
 	// Set the least significant set bit in the valid bitmask as default move
-	int8_t best_move = __builtin_ffsl(valid) - 1;
+	int8_t best_move = __builtin_ffsll(valid) - 1;
 
 	for (uint8_t i = 0; i < 64; ++i) {
 		if (is_set(valid, i)) {
@@ -93,8 +93,17 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 		return -INFINITY;
 	}
 
-	// Lookup board in hash table
-	board_eval_t *eval = find_eval(board);
+	// Lookup board in hash table. We have to switch the board in order to get
+	// the correct hash since the hash takes color into consideration.
+	board_eval_t *eval = NULL;
+	if (player == 1)
+		eval = find_eval(board);
+	else {
+		switch_boards(&board);
+		eval = find_eval(board);
+		switch_boards(&board);
+	}
+
 	if (eval != NULL && eval->depth > depth)
 		return eval->value;
 
@@ -131,8 +140,9 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 	// Place/update in hashtable
 	if (eval == NULL) {
-		eval = (board_eval_t*) malloc(sizeof(*eval));
-		eval->board = board;
+		eval = (board_eval_t *) calloc(sizeof(*eval), 1);
+		eval->board.opponent = player == 1 ? board.player : board.opponent;
+		eval->board.player = player == 1 ? board.opponent : board.player;
 		// Note, we add first, based on only the board
 		// after that, we set the values
 		add_eval(eval);
@@ -178,26 +188,24 @@ int8_t ai_turn(board_t board) {
 		}
 	}
 
+	// Calculate how many moves there are left. It lets us skip evaluating
+	// unnecessary depths in the late game
+	uint8_t moves_left = count(~(board.player | board.opponent));
 	uint8_t depth;
 
-	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH; depth++) {
+	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH && depth <= moves_left; depth++) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
-#pragma omp parallel
-		{
-			for (uint8_t i = 0; i < 64; ++i) {
-				if (is_set(valid, i)) {
-					board_t new_board = {.player = board.player, .opponent = board.opponent};
-					do_move(&new_board, i);
+#pragma omp parallel for
+		for (uint8_t i = 0; i < 64; ++i) {
+			if (is_set(valid, i)) {
+				board_t new_board = {.player = board.player, .opponent = board.opponent};
+				do_move(&new_board, i);
 
-					// We want the perspective of the other player in the recursive call
-					switch_boards(&new_board);
-
-					negamax(new_board, depth, -INFINITY, INFINITY, 1);
-				}
+				// We want the perspective of the other player in the recursive call
+				switch_boards(&new_board);
+				negamax(new_board, depth, -INFINITY, INFINITY, 1);
 			}
-#pragma omp barrier
 		}
 #ifdef METRICS
 		printf("DEPTH: %" PRIu8 "\n", depth);
@@ -220,9 +228,8 @@ int8_t ai_turn(board_t board) {
 	printf("\t Branches explored: %" PRIu64 "\n", branches_evaluated);
 	printf("\t Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
 	printf("\t %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
+	print_map();
 #endif
-
-	free_map();
 
 	return best_move;
 }
