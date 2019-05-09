@@ -3,12 +3,17 @@
 
 #include <pthread.h>
 
+// Define the size of the hashtable, 2^hashsize
 #define HASHSIZE 24
+
+// Bitmask used to mask out as many bits as the size from big numbers
 #define SIZEMASK 0xffffff
+
+// Define how many locks to use. Should be a multiple of 2
 #define LOCK_COUNT 128
 
 static board_eval_t **hashtable;
-static uint64_t vals[64][2];
+static uint64_t vals[64];
 
 #ifdef PARALLEL
 static pthread_rwlock_t *locks;
@@ -20,10 +25,13 @@ static uint64_t total_hits;
 static uint64_t total_misses;
 #endif
 
+/*
+ * Hash function that seems to result in very few collisions.
+ */
 uint64_t hash(board_t board) {
 	uint64_t hash = 0;
-	hash = (board.opponent ^ vals[count(board.opponent)][1]);
-	hash |= (board.player ^ vals[count(board.player)][1]);
+	hash = (board.opponent ^ vals[count(board.opponent)]);
+	hash |= (board.player ^ vals[count(board.player)]);
 
 	return (hash & SIZEMASK);
 }
@@ -92,9 +100,7 @@ void init_map(void) {
 #endif
 
 	for (int i = 0; i < 64; ++i) {
-		for (int j = 0; j < 2; ++j) {
-			vals[i][j] = rand();
-		}
+		vals[i]= rand();
 	}
 
 #ifdef METRICS
