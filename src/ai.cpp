@@ -182,10 +182,7 @@ int8_t ai_turn(board_t board) {
 	nodes = 0;
 
 	if (count(valid) == 1) {
-		for (uint8_t i = 0; i < 64; ++i) {
-			if (is_set(valid, i))
-				return i;
-		}
+		return __builtin_ffsll(valid) - 1;
 	}
 
 	// Calculate how many moves there are left. It lets us skip evaluating
