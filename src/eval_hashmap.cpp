@@ -121,6 +121,7 @@ void clear_map(void) {
 	printf("HASHMAP:\n");
 	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
 	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
+	printf("\t Hit rate: %lf\n", (double) total_hits / (total_hits + total_misses));
 	printf("\t Total Collisions: %" PRIu64 "\n", collisions);
 	total_hits = 0;
 	total_misses = 0;
@@ -133,6 +134,7 @@ void print_map(void) {
 	printf("HASHMAP:\n");
 	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
 	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
+	printf("\t Hit rate: %lf%%\n", ((double) total_hits / (total_hits + total_misses)) * 100);
 	printf("\t Total Collisions: %" PRIu64 "\n", collisions);
 #endif
 }
