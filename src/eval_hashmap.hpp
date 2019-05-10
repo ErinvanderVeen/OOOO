@@ -1,8 +1,6 @@
 #ifndef EVAL_HASHMAP_H
 #define EVAL_HASHMAP_H
 
-#include <uthash.h>
-
 #include "state_t.hpp"
 
 typedef struct {
