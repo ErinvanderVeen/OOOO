@@ -8,7 +8,7 @@ before_install:
 
 install:
   # C++17
-  - sudo apt-get install -qq gcc uthash-dev
+  - sudo apt-get install -qq gcc
 
 script:
   - make -C src
