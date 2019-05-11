@@ -227,13 +227,13 @@ int8_t ai_turn(board_t board) {
 void print_ai_metrics(void) {
 #ifdef METRICS
 	printf("AI:\n");
-	printf("\t Start Depth: %" PRIu8 "\n", START_DEPTH);
-	printf("\t Average Reached Depth: %" PRIu64 "\n", levels_evaluated / nr_moves);
-	printf("\t Nodes/s: %f\n", (double) nodes / ((double) nr_moves * (TIMELIMIT / 1000.0)));
-	printf("\t Branches: %" PRIu64 "\n", branches);
-	printf("\t Branches explored: %" PRIu64 "\n", branches_evaluated);
-	printf("\t Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
-	printf("\t Branch factor: %f\n", (double) branches / (double) nodes);
-	printf("\t %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
+	printf("    Start Depth: %" PRIu8 "\n", START_DEPTH);
+	printf("    Average Reached Depth: %" PRIu64 "\n", levels_evaluated / nr_moves);
+	printf("    Nodes/s: %f\n", (double) nodes / ((double) nr_moves * (TIMELIMIT / 1000.0)));
+	printf("    Branches: %" PRIu64 "\n", branches);
+	printf("    Branches explored: %" PRIu64 "\n", branches_evaluated);
+	printf("    Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
+	printf("    Branch factor: %f\n", (double) branches / (double) nodes);
+	printf("    %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
 #endif
 }

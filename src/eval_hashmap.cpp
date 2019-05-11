@@ -77,8 +77,8 @@ void free_map(void) {
 void print_hash_metrics(void) {
 #ifdef METRICS
 	printf("HASHMAP:\n");
-	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
-	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
-	printf("\t %% Hit: %f\n", 100.0 * ((double) total_hits) / ((double) total_hits + (double) total_misses));
+	printf("    Total Hits: %" PRIu64 "\n", total_hits);
+	printf("    Total Misses: %" PRIu64 "\n", total_misses);
+	printf("    %% Hit: %f\n", 100.0 * ((double) total_hits) / ((double) total_hits + (double) total_misses));
 #endif
 }

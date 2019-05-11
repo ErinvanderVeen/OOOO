@@ -205,9 +205,9 @@ int main(void) {
 	}
 
 	printf("```\n");
-	printf("Games/s:\t%.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
-	printf("AI wins:\t%.2f%%\n", (((double) win) / (win + loss + draw)) * 100);
-	printf("Draws:\t%d\n", draw);
+	printf("Games/s: %.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
+	printf("AI wins: %.2f%%\n", (((double) win) / (win + loss + draw)) * 100);
+	printf("Draws: %d\n", draw);
 	print_ai_metrics();
 	print_hash_metrics();
 	printf("```\n");
@@ -246,9 +246,9 @@ int main(void) {
 		print_transcript();
 	}
 
-	printf("Games/s:\t%.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
-	printf("AI wins:\t%.2f%%\n", (((double) win) / (win + loss + draw)) * 100);
-	printf("Draws:\t%d\n", draw);
+	printf("Games/s: %.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
+	printf("AI wins: %.2f%%\n", (((double) win) / (win + loss + draw)) * 100);
+	printf("Draws: %d\n", draw);
 
 	return 0;
 }
