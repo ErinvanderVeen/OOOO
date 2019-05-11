@@ -14,11 +14,14 @@
 #define MAX_DEPTH   64
 
 #ifdef METRICS
-static uint64_t branches;
-static uint64_t branches_evaluated;
+static uint64_t branches = 0;
+static uint64_t branches_evaluated = 0;
+static uint64_t levels_evaluated = 0;
+static uint64_t nr_moves = 0;
+static uint64_t unique_nodes = 0;
 #endif
 
-static uint64_t nodes;
+static uint64_t nodes = 0;
 static long end_time_ms;
 static bool finished;
 
@@ -84,6 +87,9 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 #ifdef METRICS
 	uint8_t children_evaluated = 0;
 #endif
+
+	nodes++;
+
 	// If we should be done with regards to time,
 	// end this evaluation
 	// Note: It does not matter what we return, because as soon as finished is
@@ -95,7 +101,7 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 	// Lookup board in hash table
 	board_eval_t *eval = find_eval(board);
-	if (eval != NULL && eval->depth > depth)
+	if (eval != NULL && eval->depth >= depth)
 		return eval->value;
 
 	// Depth 0, use evaluation function
@@ -129,8 +135,18 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	if (finished)
 		return value;
 
-	// Place/update in hashtable
-	if (eval == NULL) {
+#ifdef METRICS
+	// Ensure that we don't get mixed up print data (hampers performance)
+	uint8_t children = count(valid);
+	branches += children;
+	branches_evaluated += children_evaluated;
+#endif
+
+	// Lookup board in hash table (again)
+	eval = find_eval(board);
+	if (eval != NULL && eval->depth >= depth) {
+		return eval->value;
+	} else if (eval == NULL) {
 		eval = (board_eval_t*) malloc(sizeof(*eval));
 		eval->board = board;
 		// Note, we add first, based on only the board
@@ -139,15 +155,8 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	}
 	eval->value = value;
 	eval->depth = depth;
+	unique_nodes++;
 
-#ifdef METRICS
-	// Ensure that we don't get mixed up print data (hampers performance)
-	uint8_t children = count(valid);
-	branches += children;
-	branches_evaluated += children_evaluated;
-#endif
-
-	nodes++;
 	return value;
 }
 
@@ -159,17 +168,14 @@ int8_t ai_turn(board_t board) {
 	end_time_ms = get_time_ms() + TIMELIMIT;
 #endif
 
-#ifdef METRICS
-	branches = 0;
-	branches_evaluated = 0;
-#endif
-
 	finished = false;
 
 	init_map();
 
 	uint64_t valid = get_valid_moves(board);
+#ifndef METRICS
 	nodes = 0;
+#endif
 
 	if (count(valid) == 1) {
 		for (uint8_t i = 0; i < 64; ++i) {
@@ -200,29 +206,29 @@ int8_t ai_turn(board_t board) {
 #pragma omp barrier
 		}
 #ifdef METRICS
-		printf("DEPTH: %" PRIu8 "\n", depth);
-		char c, r;
-		from_coordinate(get_best_move(board, valid), &c, &r);
-		printf("\t Best move (so far): %c%c\n", c, r);
+		levels_evaluated += depth;
+		nr_moves++;
 #endif
 	}
 
 	// Retrieve the best move from the hashtable
 	int8_t best_move = get_best_move(board, valid);
 
-	printf("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
-
-#ifdef METRICS
-	printf("AI:\n");
-	printf("\t Start Depth: %" PRIu8 "\n", START_DEPTH);
-	printf("\t Reached Depth: %" PRIu8 "\n", depth);
-	printf("\t Branches: %" PRIu64 "\n", branches);
-	printf("\t Branches explored: %" PRIu64 "\n", branches_evaluated);
-	printf("\t Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
-	printf("\t %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
-#endif
+	debug_print("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
 
 	free_map();
 
 	return best_move;
+}
+
+void print_ai_metrics(void) {
+	printf("AI:\n");
+	printf("\t Start Depth: %" PRIu8 "\n", START_DEPTH);
+	printf("\t Average Reached Depth: %" PRIu64 "\n", levels_evaluated / nr_moves);
+	printf("\t Nodes/s: %f\n", (double) nodes / ((double) nr_moves * (TIMELIMIT / 1000.0)));
+	printf("\t Branches: %" PRIu64 "\n", branches);
+	printf("\t Branches explored: %" PRIu64 "\n", branches_evaluated);
+	printf("\t Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
+	printf("\t Branch factor: %f\n", (double) branches / (double) nodes);
+	printf("\t %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
 }
