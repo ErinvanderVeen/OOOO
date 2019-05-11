@@ -155,7 +155,10 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	}
 	eval->value = value;
 	eval->depth = depth;
+
+#ifdef METRICS
 	unique_nodes++;
+#endif
 
 	return value;
 }
@@ -222,6 +225,7 @@ int8_t ai_turn(board_t board) {
 }
 
 void print_ai_metrics(void) {
+#ifdef METRICS
 	printf("AI:\n");
 	printf("\t Start Depth: %" PRIu8 "\n", START_DEPTH);
 	printf("\t Average Reached Depth: %" PRIu64 "\n", levels_evaluated / nr_moves);
@@ -231,4 +235,5 @@ void print_ai_metrics(void) {
 	printf("\t Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
 	printf("\t Branch factor: %f\n", (double) branches / (double) nodes);
 	printf("\t %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
+#endif
 }
