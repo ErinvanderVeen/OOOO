@@ -235,5 +235,8 @@ void print_ai_metrics(void) {
 	printf("    Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
 	printf("    Branch factor: %f\n", (double) branches / (double) nodes);
 	printf("    %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
+	printf("    Nodes evaluated: %" PRIu64 "\n", nodes);
+	printf("    Unique nodes evaluated: %" PRIu64 "\n", unique_nodes);
+	printf("    %% Unique nodes : %f\n", 100 * (double) unique_nodes / (double) nodes);
 #endif
 }
