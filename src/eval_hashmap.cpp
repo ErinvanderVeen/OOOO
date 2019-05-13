@@ -21,6 +21,8 @@ static pthread_rwlock_t *locks;
 
 #ifdef METRICS
 static uint64_t collisions;
+static uint64_t total_hits = 0;
+static uint64_t total_misses = 0;
 static uint64_t total_hits;
 static uint64_t total_misses;
 #endif
@@ -103,11 +105,6 @@ void init_map(void) {
 		vals[i]= rand();
 	}
 
-#ifdef METRICS
-	total_hits = 0;
-	total_misses = 0;
-	collisions = 0;
-#endif
 }
 
 void clear_map(void) {
@@ -117,25 +114,18 @@ void clear_map(void) {
 	}
 	memset(hashtable, '\0', (1 << HASHSIZE) * sizeof(board_eval_t *));
 
-#ifdef METRICS
-	printf("HASHMAP:\n");
-	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
-	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
-	printf("\t Hit rate: %lf\n", (double) total_hits / (total_hits + total_misses));
-	printf("\t Total Collisions: %" PRIu64 "\n", collisions);
-	total_hits = 0;
-	total_misses = 0;
-	collisions = 0;
+#ifdef PARALLEL
+	omp_destroy_lock(&maplock);
 #endif
 }
 
-void print_map(void) {
+void print_hash_metrics(void) {
 #ifdef METRICS
 	printf("HASHMAP:\n");
-	printf("\t Total Hits: %" PRIu64 "\n", total_hits);
-	printf("\t Total Misses: %" PRIu64 "\n", total_misses);
-	printf("\t Hit rate: %lf%%\n", ((double) total_hits / (total_hits + total_misses)) * 100);
-	printf("\t Total Collisions: %" PRIu64 "\n", collisions);
+	printf("    Total Hits: %" PRIu64 "\n", total_hits);
+	printf("    Total Misses: %" PRIu64 "\n", total_misses);
+	printf("    %% Hit: %f\n", 100.0 * ((double) total_hits) / ((double) total_hits + (double) total_misses));
+	printf("    Total Collisions: %" PRIu64 "\n", collisions);
 #endif
 }
 

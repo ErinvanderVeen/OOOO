@@ -19,4 +19,6 @@ void clear_map(void);
 void free_map(void);
 void print_map(void);
 
+void print_hash_metrics(void);
+
 #endif
