@@ -12,3 +12,6 @@ install:
 
 script:
   - make -C src
+
+after_success:
+    - bash comment_pr.sh
