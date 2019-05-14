@@ -210,7 +210,7 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 #endif
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < max_depth; depth += depth_inc) {
+	for (depth = START_DEPTH; !finished && depth < max_depth && depth <= moves_left; depth += depth_inc) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
 		for (uint8_t i = 0; i < 64; ++i) {
