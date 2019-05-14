@@ -17,7 +17,6 @@ void delete_eval(board_eval_t *eval);
 void init_map(void);
 void clear_map(void);
 void free_map(void);
-void print_map(void);
 
 void print_hash_metrics(void);
 

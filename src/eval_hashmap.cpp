@@ -20,11 +20,9 @@ static pthread_rwlock_t *locks;
 #endif
 
 #ifdef METRICS
-static uint64_t collisions;
+static uint64_t collisions = 0;
 static uint64_t total_hits = 0;
 static uint64_t total_misses = 0;
-static uint64_t total_hits;
-static uint64_t total_misses;
 #endif
 
 /*
@@ -113,10 +111,6 @@ void clear_map(void) {
 			free(hashtable[i]);
 	}
 	memset(hashtable, '\0', (1 << HASHSIZE) * sizeof(board_eval_t *));
-
-#ifdef PARALLEL
-	omp_destroy_lock(&maplock);
-#endif
 }
 
 void print_hash_metrics(void) {

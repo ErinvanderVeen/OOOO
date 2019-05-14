@@ -224,7 +224,7 @@ int8_t ai_turn(board_t board) {
 
 	debug_print("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
 
-	free_map();
+	clear_map();
 
 	return best_move;
 }
@@ -244,6 +244,4 @@ void print_ai_metrics(void) {
 	printf("    Unique nodes evaluated: %" PRIu64 "\n", unique_nodes);
 	printf("    %% Unique nodes : %f\n", 100 * (double) unique_nodes / (double) nodes);
 #endif
-
-	return best_move;
 }
