@@ -67,7 +67,7 @@ static int8_t get_best_move(board_t board, uint64_t valid) {
 	double best_value = -INFINITY;
 
 	// Set the least significant set bit in the valid bitmask as default move
-	int8_t best_move = __builtin_ffsl(valid) - 1;
+	int8_t best_move = __builtin_ffsll(valid) - 1;
 
 	for (uint8_t i = 0; i < 64; ++i) {
 		if (is_set(valid, i)) {
@@ -103,8 +103,17 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 		return -INFINITY;
 	}
 
-	// Lookup board in hash table
-	board_eval_t *eval = find_eval(board);
+	// Lookup board in hash table. We have to switch the board in order to get
+	// the correct hash since the hash takes color into consideration.
+	board_eval_t *eval = NULL;
+	if (player == 1)
+		eval = find_eval(board);
+	else {
+		switch_boards(&board);
+		eval = find_eval(board);
+		switch_boards(&board);
+	}
+
 	if (eval != NULL && eval->depth >= depth)
 		return eval->value;
 
@@ -151,8 +160,9 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	if (eval != NULL && eval->depth >= depth) {
 		return eval->value;
 	} else if (eval == NULL) {
-		eval = (board_eval_t*) malloc(sizeof(*eval));
-		eval->board = board;
+		eval = (board_eval_t *) calloc(sizeof(*eval), 1);
+		eval->board.player = player == 1 ? board.player : board.opponent;
+		eval->board.opponent = player == 1 ? board.opponent : board.player;
 		// Note, we add first, based on only the board
 		// after that, we set the values
 		add_eval(eval);
@@ -186,12 +196,12 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 #endif
 
 	if (count(valid) == 1) {
-		for (uint8_t i = 0; i < 64; ++i) {
-			if (is_set(valid, i))
-				return i;
-		}
+		return __builtin_ffsll(valid) - 1;
 	}
 
+	// Calculate how many moves there are left. It lets us skip evaluating
+	// unnecessary depths in the late game
+	uint8_t moves_left = count(~(board.player | board.opponent));
 	uint8_t depth;
 #ifdef PARALLEL
 	uint8_t depth_inc = omp_get_max_threads();
@@ -200,7 +210,7 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 #endif
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < max_depth; depth += depth_inc) {
+	for (depth = START_DEPTH; !finished && depth < max_depth && depth <= moves_left; depth += depth_inc) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
 		for (uint8_t i = 0; i < 64; ++i) {
@@ -232,7 +242,7 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 
 	debug_print("Nodes/s: %f\n", (double) nodes / ((double) time_limit / 1000.0));
 
-	free_map();
+	clear_map();
 
 	return best_move;
 }
