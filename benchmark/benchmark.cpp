@@ -1,16 +1,17 @@
 #include <inttypes.h>
 #include <locale.h>
+#include <omp.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <stdlib.h>
 
 #include "../ai/ai.hpp"
 #include "../lib/debug.hpp"
 #include "../lib/state_t.hpp"
 #include "../lib/eval_hashmap.hpp"
 
-#define TIME_LIMIT 120
+#define TIME_LIMIT 60
 
 typedef enum {
 	AI, RANDOM
@@ -119,6 +120,9 @@ int main(void) {
 	}
 
 	printf("```\n");
+#ifdef PARALLEL
+	printf("Number of Threads: %d\n", omp_get_max_threads());
+#endif
 	printf("Games/s: %.2f\n", (double) (win + loss + draw) / TIME_LIMIT);
 	printf("AI wins: %.2f%%\n", (((double) win) / (win + loss + draw)) * 100);
 	printf("Draws: %d\n", draw);
