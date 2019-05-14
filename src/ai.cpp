@@ -157,8 +157,8 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 		return eval->value;
 	} else if (eval == NULL) {
 		eval = (board_eval_t *) calloc(sizeof(*eval), 1);
-		eval->board.opponent = player == 1 ? board.player : board.opponent;
-		eval->board.player = player == 1 ? board.opponent : board.player;
+		eval->board.player = player == 1 ? board.player : board.opponent;
+		eval->board.opponent = player == 1 ? board.opponent : board.player;
 		// Note, we add first, based on only the board
 		// after that, we set the values
 		add_eval(eval);
