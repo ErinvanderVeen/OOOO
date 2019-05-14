@@ -6,12 +6,12 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "debug.hpp"
-#include "eval_hashmap.hpp"
+#include "../lib/debug.hpp"
+#include "../lib/eval_hashmap.hpp"
 
-#define TIMELIMIT   100 //In ms
 #define START_DEPTH 1
-#define MAX_DEPTH   64
+uint64_t time_limit; //In ms
+uint8_t max_depth = 64;
 
 #ifdef METRICS
 static uint64_t branches = 0;
@@ -24,6 +24,10 @@ static uint64_t unique_nodes = 0;
 static uint64_t nodes = 0;
 static long end_time_ms;
 static bool finished;
+
+void set_max_depth(uint8_t depth) {
+	max_depth = depth;
+}
 
 static long get_time_ms(void) {
 	struct timespec spec;
@@ -163,12 +167,13 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 	return value;
 }
 
-int8_t ai_turn(board_t board) {
+int8_t ai_turn(board_t board, uint64_t time_ms) {
+	time_limit = time_ms;
 #ifdef DEBUG
 	long start_time_ms = get_time_ms();
-	end_time_ms = start_time_ms + TIMELIMIT;
+	end_time_ms = start_time_ms + time_limit;
 #else
-	end_time_ms = get_time_ms() + TIMELIMIT;
+	end_time_ms = get_time_ms() + time_limit;
 #endif
 
 	finished = false;
@@ -188,26 +193,34 @@ int8_t ai_turn(board_t board) {
 	}
 
 	uint8_t depth;
+#ifdef PARALLEL
+	uint8_t depth_inc = omp_get_max_threads();
+#else
+	uint8_t depth_inc = 1;
+#endif
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < MAX_DEPTH; depth++) {
+	for (depth = START_DEPTH; !finished && depth < max_depth; depth += depth_inc) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
+		for (uint8_t i = 0; i < 64; ++i) {
+			if (is_set(valid, i)) {
+				board_t new_board = {.player = board.player, .opponent = board.opponent};
+				do_move(&new_board, i);
+
+				// We want the perspective of the other player in the recursive call
+				switch_boards(&new_board);
+
+#ifdef PARALLEL
 #pragma omp parallel
-		{
-			for (uint8_t i = 0; i < 64; ++i) {
-				if (is_set(valid, i)) {
-					board_t new_board = {.player = board.player, .opponent = board.opponent};
-					do_move(&new_board, i);
-
-					// We want the perspective of the other player in the recursive call
-					switch_boards(&new_board);
-
-					negamax(new_board, depth, -INFINITY, INFINITY, 1);
-				}
-			}
-#pragma omp barrier
+				for (uint8_t depth_delta = 0; depth_delta < depth_inc; depth_delta++)
+					negamax(new_board, depth + depth_delta, -INFINITY, INFINITY, 1);
+#else
+				negamax(new_board, depth, -INFINITY, INFINITY, 1);
+#endif
 		}
+	}
+
 #ifdef METRICS
 		levels_evaluated += depth;
 		nr_moves++;
@@ -217,7 +230,7 @@ int8_t ai_turn(board_t board) {
 	// Retrieve the best move from the hashtable
 	int8_t best_move = get_best_move(board, valid);
 
-	debug_print("Nodes/s: %f\n", (double) nodes / (TIMELIMIT / 1000.0));
+	debug_print("Nodes/s: %f\n", (double) nodes / ((double) time_limit / 1000.0));
 
 	free_map();
 
@@ -229,7 +242,7 @@ void print_ai_metrics(void) {
 	printf("AI:\n");
 	printf("    Start Depth: %" PRIu8 "\n", START_DEPTH);
 	printf("    Average Reached Depth: %" PRIu64 "\n", levels_evaluated / nr_moves);
-	printf("    Nodes/s: %f\n", (double) nodes / ((double) nr_moves * (TIMELIMIT / 1000.0)));
+	printf("    Nodes/s: %f\n", (double) nodes / ((double) nr_moves * (time_limit / 1000.0)));
 	printf("    Branches: %" PRIu64 "\n", branches);
 	printf("    Branches explored: %" PRIu64 "\n", branches_evaluated);
 	printf("    Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
