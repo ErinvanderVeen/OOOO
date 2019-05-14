@@ -11,7 +11,7 @@ install:
   - sudo apt-get install -qq gcc
 
 script:
-  - make -C src
+  - make -C ai
 
 after_success:
-    - bash comment_pr.sh
+  - bash comment_pr.sh
