@@ -33,4 +33,4 @@ run: all
 	./interface.out
 
 clean:
-	rm *.o; rm *.out
+	rm ../**/*.o; rm ../**/*.out
