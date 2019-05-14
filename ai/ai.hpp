@@ -22,4 +22,6 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 int8_t ai_turn(board_t board, uint64_t time_ms);
 
+void print_ai_metrics();
+
 #endif
