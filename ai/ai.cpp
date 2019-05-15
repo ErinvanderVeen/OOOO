@@ -193,26 +193,34 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 	}
 
 	uint8_t depth;
+#ifdef PARALLEL
+	uint8_t depth_inc = omp_get_max_threads();
+#else
+	uint8_t depth_inc = 1;
+#endif
 
 	// TODO: The time granularity is seconds at the moment. Should be changed to milliseconds
-	for (depth = START_DEPTH; !finished && depth < max_depth; depth++) {
+	for (depth = START_DEPTH; !finished && depth < max_depth; depth += depth_inc) {
 		debug_print("Max depth: %" PRIu8 "\n", depth);
 
+		for (uint8_t i = 0; i < 64; ++i) {
+			if (is_set(valid, i)) {
+				board_t new_board = {.player = board.player, .opponent = board.opponent};
+				do_move(&new_board, i);
+
+				// We want the perspective of the other player in the recursive call
+				switch_boards(&new_board);
+
+#ifdef PARALLEL
 #pragma omp parallel
-		{
-			for (uint8_t i = 0; i < 64; ++i) {
-				if (is_set(valid, i)) {
-					board_t new_board = {.player = board.player, .opponent = board.opponent};
-					do_move(&new_board, i);
-
-					// We want the perspective of the other player in the recursive call
-					switch_boards(&new_board);
-
-					negamax(new_board, depth, -INFINITY, INFINITY, 1);
-				}
-			}
-#pragma omp barrier
+				for (uint8_t depth_delta = 0; depth_delta < depth_inc; depth_delta++)
+					negamax(new_board, depth + depth_delta, -INFINITY, INFINITY, 1);
+#else
+				negamax(new_board, depth, -INFINITY, INFINITY, 1);
+#endif
 		}
+	}
+
 #ifdef METRICS
 		levels_evaluated += depth;
 		nr_moves++;
