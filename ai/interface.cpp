@@ -5,10 +5,21 @@
 #include "ai.hpp"
 #include "../lib/state_t.hpp"
 
-board_t board;
+static board_t board;
+static bool start_player = true;
+
+static void debug(void) {
+	if (start_player) {
+		print_state(board, 0, false);
+	} else {
+		switch_boards(&board);
+		print_state(board, 0, false);
+		switch_boards(&board);
+	}
+}
 
 static void go(void) {
-	uint64_t time_ms = 1000;
+	uint64_t time_ms = 10000;
 
 	std::string arg;
 	std::string line;
@@ -25,6 +36,26 @@ static void go(void) {
 	char c, r;
 	from_coordinate(choice, &c, &r);
 	std::cout << "bestmove " << c << r << std::endl;
+
+	do_move(&board, choice);
+	switch_boards(&board);
+	start_player = !start_player;
+	
+}
+
+static void play(void) {
+	char column, row;
+
+	std::cin >> column >> row;
+
+	uint8_t choice_column = 7 - ((uint8_t) column - 97);
+	uint8_t choice_row = 7 - ((uint8_t) row - 49);
+
+	uint8_t coordinate = choice_column + choice_row * 8;
+
+	do_move(&board, coordinate);
+	switch_boards(&board);
+	start_player = !start_player;
 }
 
 static void set_pos(void) {
@@ -77,8 +108,12 @@ int main(void) {
 	while (!finished) {
 		std::cin >> command;
 
-		if (command == "go")
+		if (command == "debug")
+			debug();
+		else if (command == "go")
 			go();
+		else if (command == "play")
+			play();
 		else if (command == "position")
 			set_pos();
 		else if (command == "setoption")

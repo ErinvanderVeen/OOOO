@@ -222,7 +222,7 @@ int8_t ai_turn(board_t board, uint64_t time_ms) {
 	// Retrieve the best move from the hashtable
 	int8_t best_move = get_best_move(board, valid);
 
-	debug_print("Nodes/s: %f\n", (double) nodes / ((double) time_limit / 1000.0));
+	printf("info nodes %" PRIu64 "\n", nodes);
 
 	free_map();
 
