@@ -13,10 +13,6 @@ parallel: oooo
 paralleldebug: CFLAGS += -fopenmp -g -DPARALLEL -DDEBUG
 paralleldebug: oooo
 
-# Passing this flag will enable performance metrics
-metrics: CFLAGS += -fopenmp -Ofast -DPARALLEL -DMETRICS
-metrics: oooo
-
 oooo: oooo.cpp ai state_t eval_hashmap
 	$(CC) $(CFLAGS) oooo.cpp ai.o ../lib/state_t.o ../lib/eval_hashmap.o -o oooo.out
 

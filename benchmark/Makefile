@@ -1,9 +1,9 @@
 CC = g++
-CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17 -lstdc++ -DMETRICS
+CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17 -lstdc++ -DMETRICS -Ofast
 
 serial: benchmark
 
-parallel: CFLAGS += -fopenmp -DPARALLEL -DMETRICS
+parallel: CFLAGS += -fopenmp -DPARALLEL
 parallel: benchmark
 
 benchmark: benchmark.cpp ai state_t eval_hashmap
