@@ -19,6 +19,7 @@ static uint64_t branches_evaluated = 0;
 static uint64_t levels_evaluated = 0;
 static uint64_t nr_moves = 0;
 static uint64_t unique_nodes = 0;
+static uint64_t nodes_evaluated = 0;
 #endif
 
 static uint64_t nodes = 0;
@@ -148,6 +149,9 @@ double negamax(board_t board, uint64_t depth, double alpha, double beta, int8_t 
 
 	// Lookup board in hash table (again)
 	eval = find_eval(board);
+#ifdef METRICS
+	nodes_evaluated++;
+#endif
 	if (eval != NULL && eval->depth >= depth) {
 		return eval->value;
 	} else if (eval == NULL) {
@@ -250,8 +254,9 @@ void print_ai_metrics(void) {
 	printf("    Branches pruned: %" PRIu64 "\n", branches - branches_evaluated);
 	printf("    Branch factor: %f\n", (double) branches / (double) nodes);
 	printf("    %% Pruned: %f\n", 100.0 * ((double) branches - (double) branches_evaluated) / branches);
-	printf("    Nodes evaluated: %" PRIu64 "\n", nodes);
+	printf("    Nodes considered: %" PRIu64 "\n", nodes);
+	printf("    Nodes evaluated: %" PRIu64 "\n", nodes_evaluated);
 	printf("    Unique nodes evaluated: %" PRIu64 "\n", unique_nodes);
-	printf("    %% Unique nodes : %f\n", 100 * (double) unique_nodes / (double) nodes);
+	printf("    %% Unique nodes : %f\n", 100 * (double) unique_nodes / (double) nodes_evaluated);
 #endif
 }
