@@ -40,6 +40,10 @@ static void go(void) {
 	do_move(&board, choice);
 	switch_boards(&board);
 	start_player = !start_player;
+	if (!has_valid_move(board)) {
+		switch_boards(&board);
+		start_player = !start_player;
+	}
 }
 
 static void play(void) {
