@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -march=native -fPIC -lm -std=c++17 -lstdc++ -DMETRICS -Of
 
 serial: benchmark
 
-parallel: CFLAGS += -fopenmp -DPARALLEL
+parallel: CFLAGS += -fopenmp -lpthread -DPARALLEL
 parallel: benchmark
 
 benchmark: benchmark.cpp ai state_t eval_hashmap
