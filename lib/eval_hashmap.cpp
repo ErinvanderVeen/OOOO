@@ -1,12 +1,12 @@
 #include "eval_hashmap.hpp"
 
-#include <omp.h>
+#include <pthread.h>
 
 #include "debug.hpp"
 
 static board_eval_t *eval_hashmap = NULL;
 #ifdef PARALLEL
-static omp_lock_t maplock;
+static pthread_rwlock_t maplock;
 #endif
 
 #ifdef METRICS
@@ -16,11 +16,11 @@ static uint64_t total_misses = 0;
 
 void add_eval(board_eval_t *eval) {
 #ifdef PARALLEL
-	omp_set_lock(&maplock);
+	pthread_rwlock_wrlock(&maplock);
 #endif
 	HASH_ADD(hh, eval_hashmap, board, sizeof(board_t), eval);
 #ifdef PARALLEL
-	omp_unset_lock(&maplock);
+	pthread_rwlock_unlock(&maplock);
 #endif
 }
 
@@ -28,11 +28,11 @@ board_eval_t *find_eval(board_t board) {
 	board_eval_t *eval;
 
 #ifdef PARALLEL
-	omp_set_lock(&maplock);
+	pthread_rwlock_rdlock(&maplock);
 #endif
 	HASH_FIND(hh, eval_hashmap, &board, sizeof(board_t), eval);
 #ifdef PARALLEL
-	omp_unset_lock(&maplock);
+	pthread_rwlock_unlock(&maplock);
 #endif
 
 #ifdef METRICS
@@ -47,17 +47,17 @@ board_eval_t *find_eval(board_t board) {
 
 void delete_eval(board_eval_t *eval) {
 #ifdef PARALLEL
-	omp_set_lock(&maplock);
+	pthread_rwlock_wrlock(&maplock);
 #endif
 	HASH_DEL(eval_hashmap, eval);
 #ifdef PARALLEL
-	omp_unset_lock(&maplock);
+	pthread_rwlock_unlock(&maplock);
 #endif
 }
 
 void init_map(void) {
 #ifdef PARALLEL
-	omp_init_lock(&maplock);
+	pthread_rwlock_init(&maplock, NULL);
 #endif
 }
 
@@ -70,7 +70,7 @@ void free_map(void) {
 	}
 
 #ifdef PARALLEL
-	omp_destroy_lock(&maplock);
+	pthread_rwlock_destroy(&maplock);
 #endif
 }
 
