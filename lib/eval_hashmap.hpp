@@ -9,6 +9,7 @@ typedef struct {
 	board_t board;
 	double value;
 	uint8_t depth;
+	uint8_t best_move;
 	UT_hash_handle hh;
 } board_eval_t;
 
